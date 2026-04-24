@@ -3,80 +3,32 @@ import { NextRequest, NextResponse } from "next/server";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-function templateClinica(dados: {
-  nomePet: string;
-  tipoExame: string;
-  dataExame: string;
-  laudoUrl: string;
-}) {
-  return `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1C1C1E;">
-      <div style="background-color: #8B1A1A; padding: 32px; text-align: center; border-radius: 12px 12px 0 0;">
-        <h1 style="color: white; margin: 0; font-size: 24px;">IMAPET</h1>
-        <p style="color: rgba(255,255,255,0.8); margin: 4px 0 0; font-size: 13px;">Diagnóstico Veterinário por Imagem</p>
-      </div>
-      <div style="background: white; padding: 32px; border-radius: 0 0 12px 12px; border: 1px solid #eee;">
-        <p style="color: #6B6B6B; font-size: 14px; margin-top: 0;">Segue o laudo do exame solicitado:</p>
-        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-          <tr><td style="padding: 10px; background: #F5F0EC; font-size: 13px; color: #6B6B6B; border-radius: 6px 0 0 0;">Paciente</td><td style="padding: 10px; font-size: 14px; font-weight: bold;">${dados.nomePet}</td></tr>
-          <tr><td style="padding: 10px; background: #F5F0EC; font-size: 13px; color: #6B6B6B;">Exame</td><td style="padding: 10px; font-size: 14px;">${dados.tipoExame}</td></tr>
-          <tr><td style="padding: 10px; background: #F5F0EC; font-size: 13px; color: #6B6B6B; border-radius: 0 0 0 6px;">Data</td><td style="padding: 10px; font-size: 14px;">${dados.dataExame}</td></tr>
-        </table>
-        <div style="text-align: center; margin: 28px 0;">
-          <a href="${dados.laudoUrl}" style="background-color: #8B1A1A; color: white; padding: 14px 32px; border-radius: 50px; text-decoration: none; font-weight: bold; font-size: 15px;">
-            📄 Acessar laudo
-          </a>
-        </div>
-        <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;">
-        <p style="font-size: 12px; color: #aaa; text-align: center; margin: 0;">
-          IMAPET · Recife e região metropolitana · (81) 99674-1525
-        </p>
-      </div>
-    </div>
-  `;
-}
+const assinatura = `
+  <table cellpadding="0" cellspacing="0" style="margin-top: 32px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
+    <tr>
+      <td style="padding-right: 16px; vertical-align: middle;">
+        <img src="https://imapet.vercel.app/Logomarca/imapet.png" width="80" height="80" alt="IMAPET" style="border-radius: 8px; display: block;" />
+      </td>
+      <td style="border-left: 3px solid #8B1A1A; padding-left: 16px; vertical-align: middle;">
+        <p style="margin: 0 0 2px; font-size: 15px; font-weight: bold; color: #1C1C1E;">Júliet Bertino</p>
+        <p style="margin: 0 0 8px; font-size: 13px; color: #8B1A1A;">Médica Veterinária</p>
+        <p style="margin: 0 0 6px; font-size: 11px; font-weight: bold; color: #6B6B6B; letter-spacing: 0.05em; text-transform: uppercase;">IMAPET DIAGNÓSTICO VETERINÁRIO POR IMAGEM</p>
+        <p style="margin: 2px 0; font-size: 12px; color: #6B6B6B;">m: <a href="tel:5581996741525" style="color: #6B6B6B; text-decoration: none;">(81) 99674-1525</a></p>
+        <p style="margin: 2px 0; font-size: 12px; color: #6B6B6B;">w: <a href="https://imapet.com.br" style="color: #6B6B6B; text-decoration: none;">www.imapet.com.br</a></p>
+        <p style="margin: 2px 0; font-size: 12px; color: #6B6B6B;">e: <a href="mailto:imapet@imapet.com.br" style="color: #6B6B6B; text-decoration: none;">imapet@imapet.com.br</a></p>
+        <p style="margin: 2px 0; font-size: 12px; color: #6B6B6B;">i: <a href="https://instagram.com/imapet_diagvet" style="color: #8B1A1A; text-decoration: none;">instagram.com/imapet_diagvet</a></p>
+      </td>
+    </tr>
+  </table>
+`;
 
-function templateCliente(dados: {
-  nomeTutor: string;
-  nomePet: string;
-  tipoExame: string;
-  dataExame: string;
-  laudoUrl: string;
-  isNovoTutor: boolean;
-  cpf?: string;
-  senha?: string;
-}) {
+function template(saudacao: string, nomePet: string) {
   return `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1C1C1E;">
-      <div style="background-color: #8B1A1A; padding: 32px; text-align: center; border-radius: 12px 12px 0 0;">
-        <h1 style="color: white; margin: 0; font-size: 24px;">IMAPET</h1>
-        <p style="color: rgba(255,255,255,0.8); margin: 4px 0 0; font-size: 13px;">Diagnóstico Veterinário por Imagem</p>
-      </div>
-      <div style="background: white; padding: 32px; border-radius: 0 0 12px 12px; border: 1px solid #eee;">
-        <p style="font-size: 15px;">Olá, <strong>${dados.nomeTutor}</strong>!</p>
-        <p style="color: #6B6B6B; font-size: 14px;">O laudo do exame de <strong>${dados.nomePet}</strong> já está disponível:</p>
-        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-          <tr><td style="padding: 10px; background: #F5F0EC; font-size: 13px; color: #6B6B6B; border-radius: 6px 0 0 0;">Paciente</td><td style="padding: 10px; font-size: 14px; font-weight: bold;">${dados.nomePet}</td></tr>
-          <tr><td style="padding: 10px; background: #F5F0EC; font-size: 13px; color: #6B6B6B;">Exame</td><td style="padding: 10px; font-size: 14px;">${dados.tipoExame}</td></tr>
-          <tr><td style="padding: 10px; background: #F5F0EC; font-size: 13px; color: #6B6B6B; border-radius: 0 0 0 6px;">Data</td><td style="padding: 10px; font-size: 14px;">${dados.dataExame}</td></tr>
-        </table>
-        <div style="text-align: center; margin: 28px 0;">
-          <a href="${dados.laudoUrl}" style="background-color: #8B1A1A; color: white; padding: 14px 32px; border-radius: 50px; text-decoration: none; font-weight: bold; font-size: 15px;">
-            📄 Baixar meu laudo
-          </a>
-        </div>
-        ${dados.isNovoTutor ? `
-        <div style="background: #F5F0EC; border-radius: 10px; padding: 20px; margin: 20px 0;">
-          <p style="font-size: 13px; color: #6B6B6B; margin: 0 0 12px;">Acesse sua área do cliente em <strong>imapet.vercel.app/login</strong> para ver todo o histórico do seu pet:</p>
-          <p style="font-size: 14px; margin: 4px 0;"><strong>CPF:</strong> ${dados.cpf}</p>
-          <p style="font-size: 14px; margin: 4px 0;"><strong>Senha:</strong> ${dados.senha}</p>
-        </div>
-        ` : ""}
-        <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;">
-        <p style="font-size: 12px; color: #aaa; text-align: center; margin: 0;">
-          IMAPET · Recife e região metropolitana · (81) 99674-1525
-        </p>
-      </div>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1C1C1E; font-size: 14px; line-height: 1.6;">
+      <p>Olá, ${saudacao}!</p>
+      <p>Segue em anexo o laudo do paciente <strong>${nomePet}</strong>.</p>
+      <p>Qualquer dúvida, estamos à disposição.</p>
+      ${assinatura}
     </div>
   `;
 }
@@ -85,20 +37,27 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { tipo, para, dados } = body;
+    const { nomePet, laudoUrl, nomeTutor, nomeClinica } = dados;
 
-    const html = tipo === "clinica"
-      ? templateClinica(dados)
-      : templateCliente(dados);
+    const saudacao = tipo === "clinica" ? (nomeClinica || "prezados") : (nomeTutor || "prezado(a)");
 
-    const assunto = tipo === "clinica"
-      ? `Laudo de ${dados.tipoExame} — ${dados.nomePet}`
-      : `Laudo do seu pet ${dados.nomePet} — IMAPET`;
+    // Busca o PDF e anexa ao email
+    let attachments = [];
+    if (laudoUrl) {
+      const response = await fetch(laudoUrl);
+      const buffer = await response.arrayBuffer();
+      attachments = [{
+        filename: `Laudo_${nomePet.replace(/\s+/g, "_")}.pdf`,
+        content: Buffer.from(buffer),
+      }];
+    }
 
     const { error } = await resend.emails.send({
-      from: "IMAPET <laudos@imapet.com.br>",
+      from: "Júliet Bertino <imapet@imapet.com.br>",
       to: para,
-      subject: assunto,
-      html,
+      subject: `Laudo — ${nomePet} | IMAPET`,
+      html: template(saudacao, nomePet),
+      attachments,
     });
 
     if (error) return NextResponse.json({ ok: false, erro: error.message }, { status: 400 });

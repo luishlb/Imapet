@@ -150,13 +150,16 @@ export default function AdminPage() {
     }
   }
 
-  async function enviarEmail(para: string, tipo: "clinica" | "cliente", chave: string) {
+  async function enviarEmail(para: string, tipo: "clinica" | "cliente", chave: string, nomeClinica?: string) {
     if (!dadosEnvio) return;
     setEnviando(chave);
 
-    const dados = tipo === "clinica"
-      ? { nomePet: dadosEnvio.nomePet, tipoExame: dadosEnvio.tipoExame, dataExame: formatarData(dadosEnvio.dataExame), laudoUrl: dadosEnvio.laudoUrl }
-      : { nomeTutor: dadosEnvio.nomeTutor, nomePet: dadosEnvio.nomePet, tipoExame: dadosEnvio.tipoExame, dataExame: formatarData(dadosEnvio.dataExame), laudoUrl: dadosEnvio.laudoUrl, isNovoTutor: dadosEnvio.isNovoTutor, cpf: dadosEnvio.cpfFormatado, senha: dadosEnvio.senha };
+    const dados = {
+      nomePet: dadosEnvio.nomePet,
+      laudoUrl: dadosEnvio.laudoUrl,
+      nomeTutor: dadosEnvio.nomeTutor,
+      nomeClinica: nomeClinica || "",
+    };
 
     const res = await fetch("/api/enviar-email", {
       method: "POST",
@@ -355,7 +358,7 @@ export default function AdminPage() {
               {/* Clínicas cadastradas */}
               {clinicas.filter(c => c.email).map(c => (
                 <button key={c.id}
-                  onClick={() => enviarEmail(c.email!, "clinica", `clinica-${c.id}`)}
+                  onClick={() => enviarEmail(c.email!, "clinica", `clinica-${c.id}`, c.nome)}
                   disabled={enviando === `clinica-${c.id}` || enviados.includes(`clinica-${c.id}`)}
                   className={`w-full flex items-center justify-between px-5 py-4 rounded-xl border-2 transition-all text-left ${
                     enviados.includes(`clinica-${c.id}`)
