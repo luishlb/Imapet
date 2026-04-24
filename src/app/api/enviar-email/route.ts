@@ -7,7 +7,7 @@ const assinatura = `
   <table cellpadding="0" cellspacing="0" style="margin-top: 32px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
     <tr>
       <td style="padding-right: 16px; vertical-align: middle;">
-        <img src="https://imapet.vercel.app/Logomarca/imapet.png" width="80" height="80" alt="IMAPET" style="border-radius: 8px; display: block;" />
+        <img src="https://imapet.vercel.app/Logomarca/imapet.png" width="120" alt="IMAPET" style="border-radius: 8px; display: block; width: 120px; height: auto;" />
       </td>
       <td style="border-left: 3px solid #8B1A1A; padding-left: 16px; vertical-align: middle;">
         <p style="margin: 0 0 2px; font-size: 15px; font-weight: bold; color: #1C1C1E;">Júliet Bertino</p>

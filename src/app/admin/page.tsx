@@ -44,7 +44,7 @@ export default function AdminPage() {
     nomeTutor: "", cpf: "", emailTutor: "", whatsappTutor: "",
     nomePet: "", especie: "Cão", raca: "",
     tipoExame: "Ultrassonografia", dataExame: new Date().toISOString().split("T")[0],
-    clinica: "", formaPagamento: "Pix", valor: "", observacoes: "",
+    clinica: "", formaPagamento: "Pix", valorBruto: "", valor: "", observacoes: "",
   });
   const [arquivo, setArquivo] = useState<File | null>(null);
 
@@ -102,9 +102,10 @@ export default function AdminPage() {
       // Upload do laudo
       let laudoUrl = "";
       if (arquivo) {
-        const nomeArquivo = `${tutorId}/${petId}/${Date.now()}_${arquivo.name}`;
+        const nomeSeguro = arquivo.name.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9._-]/g, "_");
+        const nomeArquivo = `${tutorId}/${petId}/${Date.now()}_${nomeSeguro}`;
         const { error: erroUpload } = await supabase.storage.from("laudos").upload(nomeArquivo, arquivo);
-        if (erroUpload) throw new Error("Erro ao enviar o laudo.");
+        if (erroUpload) throw new Error(`Erro ao enviar o laudo: ${erroUpload.message}`);
         const { data: urlData } = supabase.storage.from("laudos").getPublicUrl(nomeArquivo);
         laudoUrl = urlData.publicUrl;
       }
@@ -113,6 +114,7 @@ export default function AdminPage() {
       const { error: erroExame } = await supabase.from("exames").insert({
         pet_id: petId, tipo: form.tipoExame, data_exame: form.dataExame,
         clinica: form.clinica, forma_pagamento: form.formaPagamento,
+        valor_bruto: form.valorBruto ? parseFloat(form.valorBruto) : null,
         valor: form.valor ? parseFloat(form.valor) : null,
         observacoes: form.observacoes, laudo_url: laudoUrl,
       });
@@ -159,7 +161,7 @@ export default function AdminPage() {
     if (!dadosEnvio) return;
     const num = numero.replace(/\D/g, "");
     const msg = encodeURIComponent(
-      `Olá! Segue o laudo de *${dadosEnvio.tipoExame}* do paciente *${dadosEnvio.nomePet}*.\n\n📄 Acesse pelo link:\n${dadosEnvio.laudoUrl}\n\nATT, IMAPET`
+      `Olá! Segue o laudo do paciente *${dadosEnvio.nomePet}*.\n\n📄 Acesse pelo link:\n${dadosEnvio.laudoUrl}\n\nATT, IMAPET`
     );
     window.open(`https://wa.me/55${num}?text=${msg}`, "_blank");
   }
@@ -169,7 +171,7 @@ export default function AdminPage() {
       nomeTutor: "", cpf: "", emailTutor: "", whatsappTutor: "",
       nomePet: "", especie: "Cão", raca: "",
       tipoExame: "Ultrassonografia", dataExame: new Date().toISOString().split("T")[0],
-      clinica: "", formaPagamento: "Pix", valor: "", observacoes: "",
+      clinica: "", formaPagamento: "Pix", valorBruto: "", valor: "", observacoes: "",
     });
     setArquivo(null);
     setDadosEnvio(null);
@@ -265,18 +267,24 @@ export default function AdminPage() {
                     {clinicas.map(c => <option key={c.id} value={c.nome} />)}
                   </datalist>
                 </div>
+                <div>
+                  <label className="block text-xs font-medium text-text-muted mb-1.5">Forma de pagamento</label>
+                  <select name="formaPagamento" value={form.formaPagamento} onChange={handleChange} className="input">
+                    <option>Pix</option>
+                    <option>Cartão de crédito</option>
+                    <option>Cartão de débito</option>
+                    <option>Dinheiro</option>
+                  </select>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-text-muted mb-1.5">Forma de pagamento</label>
-                    <select name="formaPagamento" value={form.formaPagamento} onChange={handleChange} className="input">
-                      <option>Pix</option>
-                      <option>Cartão de crédito</option>
-                      <option>Cartão de débito</option>
-                      <option>Dinheiro</option>
-                    </select>
+                    <label className="block text-xs font-medium text-text-muted mb-1.5">
+                      Valor cobrado <span className="text-gray-300 font-normal">(bruto, opcional)</span>
+                    </label>
+                    <input name="valorBruto" value={form.valorBruto} onChange={handleChange} type="number" step="0.01" min="0" placeholder="0,00" className="input" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-text-muted mb-1.5">Valor (R$)</label>
+                    <label className="block text-xs font-medium text-text-muted mb-1.5">Valor líquido (R$)</label>
                     <input name="valor" value={form.valor} onChange={handleChange} type="number" step="0.01" min="0" placeholder="0,00" className="input" />
                   </div>
                 </div>
