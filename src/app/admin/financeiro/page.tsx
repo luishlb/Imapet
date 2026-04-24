@@ -52,6 +52,7 @@ export default function FinanceiroPage() {
 
   const totalBruto = filtrados.reduce((s, e) => s + (e.valor_bruto ?? e.valor ?? 0), 0);
   const totalLiquido = filtrados.reduce((s, e) => s + (e.valor ?? 0), 0);
+  const totalVetBase = filtrados.reduce((s, e) => s + ((e.valor_bruto ?? 0) * 0.30), 0);
   const totalVet = filtrados.reduce((s, e) => s + ((e.valor_bruto ?? 0) * 0.42), 0);
   const ticketMedio = filtrados.length > 0 ? totalLiquido / filtrados.length : 0;
 
@@ -127,11 +128,14 @@ export default function FinanceiroPage() {
         ) : (
           <>
             {/* Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
               <Card label="Exames realizados" valor={String(filtrados.length)} sub={MESES[mesSel - 1]} />
               <Card label="Faturamento bruto" valor={moeda(totalBruto)} sub="valor cobrado" />
-              <Card label="Valor veterinária" valor={moeda(totalVet)} sub="42% do bruto" />
               <Card label="Faturamento líquido" valor={moeda(totalLiquido)} sub="caixa empresa" />
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+              <Card label="Vet. base (30%)" valor={moeda(totalVetBase)} sub="sem adicional" />
+              <Card label="Vet. com adicional (42%)" valor={moeda(totalVet)} sub="30% + 20% extra" />
               <Card label="Ticket médio" valor={moeda(ticketMedio)} sub="por exame" />
             </div>
 
@@ -218,30 +222,32 @@ export default function FinanceiroPage() {
                 <p className="text-sm text-text-muted px-6 py-8">Nenhum exame neste período.</p>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-xs">
                     <thead>
-                      <tr className="text-[11px] text-text-muted uppercase tracking-wider border-b border-gray-100 bg-gray-50">
-                        <th className="text-left px-6 py-3">Data</th>
-                        <th className="text-left px-4 py-3">Paciente</th>
-                        <th className="text-left px-4 py-3">Clínica</th>
-                        <th className="text-left px-4 py-3">Serviço</th>
-                        <th className="text-left px-4 py-3">Pagamento</th>
-                        <th className="text-right px-4 py-3">Bruto</th>
-                        <th className="text-right px-4 py-3">Veterinária</th>
-                        <th className="text-right px-6 py-3">Líquido</th>
+                      <tr className="text-[10px] text-text-muted uppercase tracking-wider border-b border-gray-100 bg-gray-50">
+                        <th className="text-left px-3 py-3 whitespace-nowrap">Data</th>
+                        <th className="text-left px-3 py-3">Paciente</th>
+                        <th className="text-left px-3 py-3">Clínica</th>
+                        <th className="text-left px-3 py-3">Serviço</th>
+                        <th className="text-left px-3 py-3">Pgto.</th>
+                        <th className="text-right px-3 py-3">Bruto</th>
+                        <th className="text-right px-3 py-3">Vet. 30%</th>
+                        <th className="text-right px-3 py-3">Vet. 42%</th>
+                        <th className="text-right px-3 py-3">Líquido</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                       {filtrados.map(e => (
                         <tr key={e.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-6 py-3 text-text-muted whitespace-nowrap">{dataFmt(e.data_exame)}</td>
-                          <td className="px-4 py-3 font-medium text-text-main">{e.nome_paciente || e.pets?.nome || "—"}</td>
-                          <td className="px-4 py-3 text-text-muted">{e.clinica || "—"}</td>
-                          <td className="px-4 py-3 text-text-muted">{e.tipo || "—"}</td>
-                          <td className="px-4 py-3 text-text-muted">{e.forma_pagamento || "—"}</td>
-                          <td className="px-4 py-3 text-right text-text-muted">{e.valor_bruto ? moeda(e.valor_bruto) : "—"}</td>
-                          <td className="px-4 py-3 text-right text-text-muted">{e.valor_bruto ? moeda(e.valor_bruto * 0.42) : "—"}</td>
-                          <td className="px-6 py-3 text-right font-semibold text-primary">{e.valor ? moeda(e.valor) : "—"}</td>
+                          <td className="px-3 py-2.5 text-text-muted whitespace-nowrap">{dataFmt(e.data_exame)}</td>
+                          <td className="px-3 py-2.5 font-medium text-text-main">{e.nome_paciente || e.pets?.nome || "—"}</td>
+                          <td className="px-3 py-2.5 text-text-muted">{e.clinica || "—"}</td>
+                          <td className="px-3 py-2.5 text-text-muted">{e.tipo || "—"}</td>
+                          <td className="px-3 py-2.5 text-text-muted">{e.forma_pagamento || "—"}</td>
+                          <td className="px-3 py-2.5 text-right text-text-muted">{e.valor_bruto ? moeda(e.valor_bruto) : "—"}</td>
+                          <td className="px-3 py-2.5 text-right text-text-muted">{e.valor_bruto ? moeda(e.valor_bruto * 0.30) : "—"}</td>
+                          <td className="px-3 py-2.5 text-right text-text-muted">{e.valor_bruto ? moeda(e.valor_bruto * 0.42) : "—"}</td>
+                          <td className="px-3 py-2.5 text-right font-semibold text-primary">{e.valor ? moeda(e.valor) : "—"}</td>
                         </tr>
                       ))}
                     </tbody>
