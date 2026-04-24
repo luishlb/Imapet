@@ -134,6 +134,7 @@ export default function AdminPage() {
         valor_bruto: form.valorBruto ? parseFloat(form.valorBruto) : null,
         valor: form.valor ? parseFloat(form.valor) : null,
         observacoes: form.observacoes, laudo_url: laudoUrl,
+        nome_paciente: form.nomePet || null,
       });
       if (erroExame) throw new Error("Erro ao registrar o exame.");
 

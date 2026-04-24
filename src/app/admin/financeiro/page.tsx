@@ -13,6 +13,7 @@ type Exame = {
   forma_pagamento: string;
   valor: number | null;
   valor_bruto: number | null;
+  nome_paciente: string | null;
   pets: { nome: string } | null;
 };
 
@@ -38,7 +39,7 @@ export default function FinanceiroPage() {
   useEffect(() => {
     createClient()
       .from("exames")
-      .select("id, data_exame, tipo, clinica, forma_pagamento, valor, valor_bruto, pets(nome)")
+      .select("id, data_exame, tipo, clinica, forma_pagamento, valor, valor_bruto, nome_paciente, pets(nome)")
       .order("data_exame", { ascending: false })
       .then(({ data }) => { setExames((data as Exame[]) || []); setCarregando(false); });
   }, []);
@@ -231,7 +232,7 @@ export default function FinanceiroPage() {
                       {filtrados.map(e => (
                         <tr key={e.id} className="hover:bg-gray-50 transition-colors">
                           <td className="px-6 py-3 text-text-muted whitespace-nowrap">{dataFmt(e.data_exame)}</td>
-                          <td className="px-4 py-3 font-medium text-text-main">{e.pets?.nome || "—"}</td>
+                          <td className="px-4 py-3 font-medium text-text-main">{e.nome_paciente || e.pets?.nome || "—"}</td>
                           <td className="px-4 py-3 text-text-muted">{e.clinica || "—"}</td>
                           <td className="px-4 py-3 text-text-muted">{e.tipo || "—"}</td>
                           <td className="px-4 py-3 text-text-muted">{e.forma_pagamento || "—"}</td>
