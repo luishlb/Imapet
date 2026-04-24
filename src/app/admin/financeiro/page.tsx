@@ -46,6 +46,7 @@ export default function FinanceiroPage() {
       .from("exames")
       .select("id, data_exame, tipo, clinica, forma_pagamento, valor, valor_bruto, nome_paciente, pets(nome)")
       .order("data_exame", { ascending: false })
+      .limit(10000)
       .then(({ data }) => { setExames((data as Exame[]) || []); setCarregando(false); });
   }, []);
 
@@ -185,7 +186,7 @@ export default function FinanceiroPage() {
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
               <Card label="Exames realizados" valor={String(filtrados.length)} sub={labelPeriodo} />
               <Card label="Faturamento bruto" valor={moeda(totalBruto)} sub="valor cobrado" />
-              <Card label="Faturamento líquido" valor={moeda(totalLiquido)} sub="caixa empresa" />
+              <Card label="Fat. empresa" valor={moeda(totalLiquido)} sub="caixa empresa" />
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
               <Card label="Vet. base (30%)" valor={moeda(totalVetBase)} sub="sem adicional" />
