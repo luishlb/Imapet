@@ -68,33 +68,41 @@ export default function AdminPage() {
       const supabase = createClient();
       const cpfLimpo = form.cpf.replace(/\D/g, "");
 
-      // Verifica se tutor já existe
-      const { data: tutorExistente } = await supabase
-        .from("tutores").select("id").eq("cpf", cpfLimpo).single();
-
-      let tutorId: string;
-      if (tutorExistente) {
-        tutorId = tutorExistente.id;
-      } else {
-        const { data: novoTutor, error: erroTutor } = await supabase
-          .from("tutores").insert({
-            nome: form.nomeTutor, cpf: cpfLimpo,
-            email: form.emailTutor, whatsapp: form.whatsappTutor,
-          }).select("id").single();
-        if (erroTutor || !novoTutor) throw new Error("Erro ao cadastrar tutor.");
-        tutorId = novoTutor.id;
+      // Tutor é opcional — só cadastra se tiver CPF
+      let tutorId: string | null = null;
+      if (cpfLimpo) {
+        const { data: tutorExistente } = await supabase
+          .from("tutores").select("id").eq("cpf", cpfLimpo).single();
+        if (tutorExistente) {
+          tutorId = tutorExistente.id;
+        } else {
+          const { data: novoTutor, error: erroTutor } = await supabase
+            .from("tutores").insert({
+              nome: form.nomeTutor || null, cpf: cpfLimpo,
+              email: form.emailTutor || null, whatsapp: form.whatsappTutor || null,
+            }).select("id").single();
+          if (erroTutor || !novoTutor) throw new Error("Erro ao cadastrar tutor.");
+          tutorId = novoTutor.id;
+        }
       }
 
-      // Verifica se pet já existe
-      const { data: petExistente } = await supabase
-        .from("pets").select("id").eq("tutor_id", tutorId).eq("nome", form.nomePet).single();
-
+      // Pet: se tem tutor, tenta reaproveitar o mesmo pet pelo nome
       let petId: string;
-      if (petExistente) {
-        petId = petExistente.id;
+      if (tutorId) {
+        const { data: petExistente } = await supabase
+          .from("pets").select("id").eq("tutor_id", tutorId).eq("nome", form.nomePet).single();
+        if (petExistente) {
+          petId = petExistente.id;
+        } else {
+          const { data: novoPet, error: erroPet } = await supabase
+            .from("pets").insert({ tutor_id: tutorId, nome: form.nomePet, especie: form.especie, raca: form.raca })
+            .select("id").single();
+          if (erroPet || !novoPet) throw new Error("Erro ao cadastrar pet.");
+          petId = novoPet.id;
+        }
       } else {
         const { data: novoPet, error: erroPet } = await supabase
-          .from("pets").insert({ tutor_id: tutorId, nome: form.nomePet, especie: form.especie, raca: form.raca })
+          .from("pets").insert({ tutor_id: null, nome: form.nomePet, especie: form.especie, raca: form.raca })
           .select("id").single();
         if (erroPet || !novoPet) throw new Error("Erro ao cadastrar pet.");
         petId = novoPet.id;
@@ -104,7 +112,7 @@ export default function AdminPage() {
       let laudoUrl = "";
       if (arquivo) {
         const nomeSeguro = arquivo.name.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9._-]/g, "_");
-        const nomeArquivo = `${tutorId}/${petId}/${Date.now()}_${nomeSeguro}`;
+        const nomeArquivo = `${petId}/${Date.now()}_${nomeSeguro}`;
         const { error: erroUpload } = await supabase.storage.from("laudos").upload(nomeArquivo, arquivo);
         if (erroUpload) throw new Error(`Erro ao enviar o laudo: ${erroUpload.message}`);
         const { data: urlData } = supabase.storage.from("laudos").getPublicUrl(nomeArquivo);
@@ -200,15 +208,18 @@ export default function AdminPage() {
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Tutor */}
               <div className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
-                <h2 className="font-semibold text-text-main">Dados do tutor</h2>
+                <div>
+                  <h2 className="font-semibold text-text-main">Dados do tutor</h2>
+                  <p className="text-xs text-text-muted mt-0.5">Todos opcionais — preencha quando disponível</p>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-text-muted mb-1.5">Nome completo</label>
-                    <input name="nomeTutor" value={form.nomeTutor} onChange={handleChange} required placeholder="Nome do tutor" className="input" />
+                    <input name="nomeTutor" value={form.nomeTutor} onChange={handleChange} placeholder="Nome do tutor" className="input" />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-text-muted mb-1.5">CPF</label>
-                    <input name="cpf" value={form.cpf} onChange={handleChange} required placeholder="000.000.000-00" inputMode="numeric" className="input" />
+                    <input name="cpf" value={form.cpf} onChange={handleChange} placeholder="000.000.000-00" inputMode="numeric" className="input" />
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
