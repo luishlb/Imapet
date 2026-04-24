@@ -18,6 +18,9 @@ type Exame = {
 };
 
 const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+const HOJE = new Date();
+const PRIMEIRO_DIA_MES = `${HOJE.getFullYear()}-${String(HOJE.getMonth() + 1).padStart(2, "0")}-01`;
+const HOJE_STR = HOJE.toISOString().split("T")[0];
 
 function moeda(v: number) {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -26,6 +29,15 @@ function moeda(v: number) {
 function dataFmt(d: string) {
   const [a, m, dia] = d.split("-");
   return `${dia}/${m}/${a}`;
+}
+
+function normalizarPagamento(p: string): string {
+  if (!p) return "Outro";
+  const s = p.trim().toLowerCase();
+  if (s === "pix") return "PIX";
+  if (s.startsWith("créd") || s.startsWith("cred")) return "Crédito";
+  if (s === "débito" || s === "debito") return "Débito";
+  return p.trim();
 }
 
 async function fetchTodos(): Promise<Exame[]> {
@@ -53,16 +65,13 @@ export default function FinanceiroPage() {
   const [exames, setExames] = useState<Exame[]>([]);
   const [carregando, setCarregando] = useState(true);
 
-  const hoje = new Date();
   const [modo, setModo] = useState<"mensal" | "periodo">("mensal");
-  const [mesSel, setMesSel] = useState(hoje.getMonth() + 1);
-  const [anoSel, setAnoSel] = useState(hoje.getFullYear());
-
-  const primeiroDiaMes = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}-01`;
-  const [dataInicio, setDataInicio] = useState(primeiroDiaMes);
-  const [dataFim, setDataFim] = useState(hoje.toISOString().split("T")[0]);
-  const [dataInicioAplicada, setDataInicioAplicada] = useState(primeiroDiaMes);
-  const [dataFimAplicada, setDataFimAplicada] = useState(hoje.toISOString().split("T")[0]);
+  const [mesSel, setMesSel] = useState(HOJE.getMonth() + 1);
+  const [anoSel, setAnoSel] = useState(HOJE.getFullYear());
+  const [dataInicio, setDataInicio] = useState(PRIMEIRO_DIA_MES);
+  const [dataFim, setDataFim] = useState(HOJE_STR);
+  const [dataInicioAplicada, setDataInicioAplicada] = useState(PRIMEIRO_DIA_MES);
+  const [dataFimAplicada, setDataFimAplicada] = useState(HOJE_STR);
 
   useEffect(() => { fetchTodos().then(d => { setExames(d); setCarregando(false); }); }, []);
 
@@ -75,7 +84,7 @@ export default function FinanceiroPage() {
 
   const anos = useMemo(() => {
     const set = new Set(exames.map(e => new Date(e.data_exame + "T12:00:00").getFullYear()));
-    set.add(hoje.getFullYear());
+    set.add(HOJE.getFullYear());
     return [...set].sort((a, b) => b - a);
   }, [exames]);
 
@@ -100,7 +109,6 @@ export default function FinanceiroPage() {
           <p className="text-text-muted text-sm mt-1">Dados brutos por período</p>
         </div>
 
-        {/* Filtros */}
         <div className="bg-white rounded-2xl p-4 shadow-sm mb-6 flex flex-col sm:flex-row sm:items-center gap-4">
           <div className="flex rounded-xl overflow-hidden border border-gray-200 shrink-0">
             <button onClick={() => setModo("mensal")} className={`px-4 py-2 text-sm font-medium transition-colors ${modo === "mensal" ? "bg-primary text-white" : "bg-white text-text-muted hover:bg-gray-50"}`}>Mensal</button>
@@ -161,7 +169,7 @@ export default function FinanceiroPage() {
                         <td className="px-2 py-2 font-medium text-text-main">{e.nome_paciente || e.pets?.nome || "—"}</td>
                         <td className="px-2 py-2 text-text-muted">{e.clinica || "—"}</td>
                         <td className="px-2 py-2 text-text-muted">{e.tipo || "—"}</td>
-                        <td className="px-2 py-2 text-text-muted">{e.forma_pagamento || "—"}</td>
+                        <td className="px-2 py-2 text-text-muted">{normalizarPagamento(e.forma_pagamento)}</td>
                         <td className="px-2 py-2 text-right text-text-muted">{e.valor_bruto ? moeda(e.valor_bruto) : "—"}</td>
                         <td className="px-2 py-2 text-right text-text-muted">{e.valor_bruto ? moeda(e.valor_bruto * 0.30) : "—"}</td>
                         <td className="px-2 py-2 text-right text-text-muted">{e.valor_bruto ? moeda(e.valor_bruto * 0.42) : "—"}</td>

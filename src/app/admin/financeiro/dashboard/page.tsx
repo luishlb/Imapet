@@ -17,8 +17,20 @@ type Exame = {
 
 const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 const DIAS_SEMANA = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+const HOJE = new Date();
+const PRIMEIRO_DIA_MES = `${HOJE.getFullYear()}-${String(HOJE.getMonth() + 1).padStart(2, "0")}-01`;
+const HOJE_STR = HOJE.toISOString().split("T")[0];
 
 function moeda(v: number) { return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
+
+function normalizarPagamento(p: string): string {
+  if (!p) return "Outro";
+  const s = p.trim().toLowerCase();
+  if (s === "pix") return "PIX";
+  if (s.startsWith("créd") || s.startsWith("cred")) return "Crédito";
+  if (s === "débito" || s === "debito") return "Débito";
+  return p.trim();
+}
 
 async function fetchTodos(): Promise<Exame[]> {
   const supabase = createClient();
@@ -102,25 +114,22 @@ export default function DashboardPage() {
   const [exames, setExames] = useState<Exame[]>([]);
   const [carregando, setCarregando] = useState(true);
 
-  const hoje = new Date();
-  const primeiroDiaMes = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}-01`;
-
   const [modo, setModo] = useState<"mensal" | "periodo">("mensal");
-  const [mesSel, setMesSel] = useState(hoje.getMonth() + 1);
-  const [anoSel, setAnoSel] = useState(hoje.getFullYear());
-  const [dataInicio, setDataInicio] = useState(primeiroDiaMes);
-  const [dataFim, setDataFim] = useState(hoje.toISOString().split("T")[0]);
-  const [dataInicioAplicada, setDataInicioAplicada] = useState(primeiroDiaMes);
-  const [dataFimAplicada, setDataFimAplicada] = useState(hoje.toISOString().split("T")[0]);
+  const [mesSel, setMesSel] = useState(HOJE.getMonth() + 1);
+  const [anoSel, setAnoSel] = useState(HOJE.getFullYear());
+  const [dataInicio, setDataInicio] = useState(PRIMEIRO_DIA_MES);
+  const [dataFim, setDataFim] = useState(HOJE_STR);
+  const [dataInicioAplicada, setDataInicioAplicada] = useState(PRIMEIRO_DIA_MES);
+  const [dataFimAplicada, setDataFimAplicada] = useState(HOJE_STR);
 
   // Calculadora veterinária
   const [vetModo, setVetModo] = useState<"mensal" | "periodo">("mensal");
-  const [vetMes, setVetMes] = useState(hoje.getMonth() + 1);
-  const [vetAno, setVetAno] = useState(hoje.getFullYear());
-  const [vetInicio, setVetInicio] = useState(primeiroDiaMes);
-  const [vetFim, setVetFim] = useState(hoje.toISOString().split("T")[0]);
-  const [vetInicioAplicado, setVetInicioAplicado] = useState(primeiroDiaMes);
-  const [vetFimAplicado, setVetFimAplicado] = useState(hoje.toISOString().split("T")[0]);
+  const [vetMes, setVetMes] = useState(HOJE.getMonth() + 1);
+  const [vetAno, setVetAno] = useState(HOJE.getFullYear());
+  const [vetInicio, setVetInicio] = useState(PRIMEIRO_DIA_MES);
+  const [vetFim, setVetFim] = useState(HOJE_STR);
+  const [vetInicioAplicado, setVetInicioAplicado] = useState(PRIMEIRO_DIA_MES);
+  const [vetFimAplicado, setVetFimAplicado] = useState(HOJE_STR);
   const [resultadoVet, setResultadoVet] = useState<{ bruto: number; v30: number; v42: number; count: number } | null>(null);
 
   useEffect(() => { fetchTodos().then(d => { setExames(d); setCarregando(false); }); }, []);
@@ -141,7 +150,7 @@ export default function DashboardPage() {
 
   const anos = useMemo(() => {
     const set = new Set(exames.map(e => new Date(e.data_exame + "T12:00:00").getFullYear()));
-    set.add(hoje.getFullYear());
+    set.add(HOJE.getFullYear());
     return [...set].sort((a, b) => b - a);
   }, [exames]);
 
@@ -200,7 +209,7 @@ export default function DashboardPage() {
   const porPagamento = useMemo(() => {
     const map: Record<string, { total: number; count: number }> = {};
     filtrados.forEach(e => {
-      const p = e.forma_pagamento || "Outro";
+      const p = normalizarPagamento(e.forma_pagamento);
       if (!map[p]) map[p] = { total: 0, count: 0 };
       map[p].total += e.valor_bruto ?? e.valor ?? 0;
       map[p].count += 1;
