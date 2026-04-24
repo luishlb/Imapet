@@ -12,12 +12,12 @@ export default function Sobre() {
             <div className="absolute -bottom-6 -right-6 w-56 h-56 rounded-2xl bg-white -z-10" />
 
             {/* Main image */}
-            <div className="relative h-[480px] rounded-3xl overflow-hidden shadow-lg">
+            <div className="relative h-[480px] rounded-3xl overflow-hidden shadow-lg flex items-center justify-center bg-primary">
               <Image
-                src="/diferencial-gel.jpg"
-                alt="Atendimento IMAPET — cuidado e tecnologia"
+                src="/Logomarca/imapet.png"
+                alt="IMAPET — Diagnóstico Veterinário por Imagem"
                 fill
-                className="object-cover"
+                className="object-contain p-10"
               />
             </div>
 

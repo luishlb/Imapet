@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 const navLinks = [
   { label: "Serviços", href: "#servicos" },
   { label: "Como funciona", href: "#como-funciona" },
@@ -14,12 +16,13 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
           {/* Brand */}
           <div>
-            <p className="font-playfair text-3xl font-bold text-white mb-1">
-              IMAPET
-            </p>
-            <p className="text-white/40 text-sm mb-6">
-              Diagnóstico Veterinário por Imagem
-            </p>
+            <Image
+              src="/Logomarca/imapet.png"
+              alt="IMAPET"
+              width={160}
+              height={100}
+              className="object-contain rounded-2xl mb-6"
+            />
             <p className="text-white/55 text-sm leading-relaxed">
               Atendemos clínicas veterinárias em Recife e região metropolitana,
               levando diagnóstico por imagem com tecnologia, cuidado e

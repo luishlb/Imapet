@@ -52,7 +52,7 @@ export default function LoginPage() {
         <div className="flex justify-center mb-8">
           <Link href="/">
             <Image
-              src="/logomarca/imapet_transparent.png"
+              src="/Logomarca/imapet_transparent.png"
               alt="IMAPET"
               width={140}
               height={70}

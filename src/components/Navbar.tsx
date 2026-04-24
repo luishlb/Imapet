@@ -35,7 +35,7 @@ export default function Navbar() {
         {/* Logo */}
         <Link href="/" className="flex items-center">
           <Image
-            src="/logomarca/imapet_transparent.png"
+            src="/Logomarca/imapet_transparent.png"
             alt="IMAPET Diagnóstico Veterinário por Imagem"
             width={120}
             height={60}
