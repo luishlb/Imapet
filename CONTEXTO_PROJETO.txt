@@ -1,0 +1,177 @@
+Você é meu parceiro técnico no desenvolvimento da plataforma digital da IMAPET.
+Preciso que você retome o projeto de onde paramos. Leia tudo com atenção antes
+de responder.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SOBRE MIM
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Sou o dono/gestor da IMAPET. Sou leigo em tecnologia. Quero sempre explicações
+simples, sem jargão técnico. Quando precisar de imagens, me forneça um prompt
+detalhado para eu gerar no ChatGPT.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SOBRE A IMAPET
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Empresa de diagnóstico veterinário por imagem.
+Serviços: Ultrassonografia e Cistocentese.
+Atuação: Recife e região metropolitana (Pernambuco).
+Modelo: ITINERANTE — não tem espaço fixo. Opera dentro das clínicas parceiras.
+WhatsApp: (81) 99674-1525 → https://wa.me/5581996741525
+Instagram: @imapet_diagvet → https://www.instagram.com/imapet_diagvet/
+Domínio: imapet.com.br
+
+DIFERENCIAIS DE MARCA:
+- Musicoterapia
+- Gel aquecido
+- Aromaterapia
+- Terapia de luz
+
+VALORES: confiança, cuidado, acolhimento, profissionalismo, tecnologia com
+sensibilidade.
+
+MODELO DE NEGÓCIO IMPORTANTE:
+- 90% dos agendamentos são feitos pela CLÍNICA PARCEIRA, não pelo tutor.
+- Fluxo: Clínica agenda → IMAPET vai até a clínica → realiza exame → envia
+  laudo para o tutor.
+- Há dois clientes: a clínica parceira (quem agenda) e o tutor/cliente final
+  (quem recebe o laudo).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+IDENTIDADE VISUAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Cores:
+- Primária:         #8B1A1A  (vermelho bordô — cor do logo)
+- Primária clara:   #A52020
+- Fundo:            #FAFAF8  (branco quente)
+- Card/seção alt:   #F5F0EC  (bege suave)
+- Texto:            #1C1C1E  (carvão)
+- Texto secundário: #6B6B6B
+- Accent:           #D4A5A5  (rosa empoeirado)
+
+Fontes:
+- Títulos: Playfair Display (serif, elegante)
+- Corpo:   Inter (moderna, limpa)
+
+Estilo: moderno, equilibrado, acolhedor. Imagens de pets tranquilos.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STACK TÉCNICA APROVADA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- Frontend: Next.js 15 + TypeScript + Tailwind CSS 3
+- Deploy:   Vercel (futuramente no domínio imapet.com.br)
+- Banco:    Supabase (PostgreSQL + Auth + Storage)
+- E-mail:   Resend
+- WhatsApp: a decidir na Fase 3 (Twilio vs Evolution API)
+- Auth:     e-mail+senha + Google (ambos)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DECISÕES TÉCNICAS JÁ TOMADAS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Banco: Supabase
+2. Login: e-mail+senha + Google
+3. WhatsApp: deixar para Fase 3
+4. Laudos: só armazenar (a veterinária gera o PDF externamente e faz upload)
+5. Agendamento MVP: botão "Agendar pelo WhatsApp" (não há agenda online ainda)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+REPOSITÓRIO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+GitHub: https://github.com/luishlb/Imapet (privado)
+Branch: master
+Pasta local: C:\Users\luish\OneDrive\Documentos\Projetos Claude Code\Imapet
+
+Estrutura do projeto:
+Imapet/
+├── public/
+│   ├── hero-pet.jpg
+│   ├── diferencial-gel.jpg
+│   ├── veterinario-exame.jpg
+│   └── clinicas-parceiras.jpg
+├── src/
+│   ├── app/
+│   │   ├── globals.css
+│   │   ├── layout.tsx
+│   │   └── page.tsx
+│   └── components/
+│       ├── Navbar.tsx
+│       ├── Hero.tsx
+│       ├── Diferenciais.tsx
+│       ├── Servicos.tsx
+│       ├── ComoFunciona.tsx
+│       ├── ClinicasParceiras.tsx
+│       ├── Sobre.tsx
+│       └── Footer.tsx
+├── CONTEXTO_PROJETO.txt   ← este arquivo
+├── package.json
+├── tailwind.config.ts
+├── next.config.ts
+├── tsconfig.json
+└── .gitignore
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+O QUE JÁ FOI CONSTRUÍDO — FASE 1 ✅
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Site institucional completo com 8 seções:
+
+1. Navbar — fixa, transparente no hero, branca ao rolar, menu mobile
+2. Hero — imagem de fundo, headline "O diagnóstico que vai até o seu pet.",
+   botão WhatsApp e botão "Conheça nossos serviços"
+3. Diferenciais — 4 cards com ícones (musicoterapia, gel, aromaterapia, luz)
+4. Serviços — Ultrassonografia + Cistocentese com descrições e checklists
+5. Como funciona — 4 passos com linha conectora
+6. Clínicas Parceiras — seção em vermelho com benefícios e CTA para parceria
+7. Sobre — texto + imagem + cards estatísticos
+8. Footer — WhatsApp, Instagram, localização, copyright
+
+O build compila sem erros. Para rodar localmente:
+  cd "C:\Users\luish\OneDrive\Documentos\Projetos Claude Code\Imapet"
+  npm run dev
+  Acessar: http://localhost:3000
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ROADMAP COMPLETO DO PROJETO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FASE 1 — Site Institucional ✅ CONCLUÍDA
+  Site moderno e responsivo no ar
+
+FASE 2 — Área do Cliente + Painel Admin
+  - Login do tutor (e-mail + Google)
+  - Cadastro de pets
+  - Histórico de exames por pet
+  - Download de laudos em PDF
+  - Painel admin: cadastro de clientes, pets, exames, upload de laudos
+  - Envio manual de laudo por e-mail
+
+FASE 3 — Automação de Envios
+  - Disparo automático de e-mail ao subir laudo (Resend)
+  - Integração WhatsApp (decidir: Twilio ou Evolution API)
+  - Notificação "exame pronto"
+  - Confirmação de entrega
+
+FASE 4 — Agente WhatsApp + Expansão
+  - Bot com fluxo de atendimento
+  - Integração com IA para respostas
+  - Portal para clínicas parceiras
+  - Relatórios e dashboards
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+O QUE PRECISA SER FEITO AGORA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Escolha uma das opções abaixo para continuar:
+
+A) AJUSTES VISUAIS no site atual (textos, cores, layout)
+B) DEPLOY na Vercel + configurar domínio imapet.com.br
+C) ADICIONAR o logo da IMAPET no navbar (substituir o texto)
+D) INICIAR a Fase 2 (área do cliente + painel admin com Supabase)
+
+Me diga por onde quer começar e vá devagar, passo a passo,
+explicando tudo de forma simples como fez antes.
