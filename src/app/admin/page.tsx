@@ -68,18 +68,25 @@ export default function AdminPage() {
       const supabase = createClient();
       const cpfLimpo = form.cpf.replace(/\D/g, "");
 
-      // Tutor é opcional — só cadastra se tiver CPF
+      // Tutor é totalmente opcional
       let tutorId: string | null = null;
-      if (cpfLimpo) {
-        const { data: tutorExistente } = await supabase
-          .from("tutores").select("id").eq("cpf", cpfLimpo).single();
-        if (tutorExistente) {
-          tutorId = tutorExistente.id;
-        } else {
+      const temDadosTutor = cpfLimpo || form.nomeTutor || form.emailTutor || form.whatsappTutor;
+      if (temDadosTutor) {
+        // Se tem CPF, tenta reaproveitar tutor existente
+        if (cpfLimpo) {
+          const { data: tutorExistente } = await supabase
+            .from("tutores").select("id").eq("cpf", cpfLimpo).single();
+          if (tutorExistente) {
+            tutorId = tutorExistente.id;
+          }
+        }
+        if (!tutorId) {
           const { data: novoTutor, error: erroTutor } = await supabase
             .from("tutores").insert({
-              nome: form.nomeTutor || null, cpf: cpfLimpo,
-              email: form.emailTutor || null, whatsapp: form.whatsappTutor || null,
+              nome: form.nomeTutor || null,
+              cpf: cpfLimpo || null,
+              email: form.emailTutor || null,
+              whatsapp: form.whatsappTutor || null,
             }).select("id").single();
           if (erroTutor || !novoTutor) throw new Error("Erro ao cadastrar tutor.");
           tutorId = novoTutor.id;
