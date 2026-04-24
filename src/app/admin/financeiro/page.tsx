@@ -52,6 +52,7 @@ export default function FinanceiroPage() {
 
   const totalBruto = filtrados.reduce((s, e) => s + (e.valor_bruto ?? e.valor ?? 0), 0);
   const totalLiquido = filtrados.reduce((s, e) => s + (e.valor ?? 0), 0);
+  const totalVet = filtrados.reduce((s, e) => s + ((e.valor_bruto ?? 0) * 0.42), 0);
   const ticketMedio = filtrados.length > 0 ? totalLiquido / filtrados.length : 0;
 
   const ultimos6 = useMemo(() => {
@@ -126,10 +127,11 @@ export default function FinanceiroPage() {
         ) : (
           <>
             {/* Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
               <Card label="Exames realizados" valor={String(filtrados.length)} sub={MESES[mesSel - 1]} />
               <Card label="Faturamento bruto" valor={moeda(totalBruto)} sub="valor cobrado" />
-              <Card label="Faturamento líquido" valor={moeda(totalLiquido)} sub="valor recebido" />
+              <Card label="Valor veterinária" valor={moeda(totalVet)} sub="42% do bruto" />
+              <Card label="Faturamento líquido" valor={moeda(totalLiquido)} sub="caixa empresa" />
               <Card label="Ticket médio" valor={moeda(ticketMedio)} sub="por exame" />
             </div>
 
@@ -225,6 +227,7 @@ export default function FinanceiroPage() {
                         <th className="text-left px-4 py-3">Serviço</th>
                         <th className="text-left px-4 py-3">Pagamento</th>
                         <th className="text-right px-4 py-3">Bruto</th>
+                        <th className="text-right px-4 py-3">Veterinária</th>
                         <th className="text-right px-6 py-3">Líquido</th>
                       </tr>
                     </thead>
@@ -237,6 +240,7 @@ export default function FinanceiroPage() {
                           <td className="px-4 py-3 text-text-muted">{e.tipo || "—"}</td>
                           <td className="px-4 py-3 text-text-muted">{e.forma_pagamento || "—"}</td>
                           <td className="px-4 py-3 text-right text-text-muted">{e.valor_bruto ? moeda(e.valor_bruto) : "—"}</td>
+                          <td className="px-4 py-3 text-right text-text-muted">{e.valor_bruto ? moeda(e.valor_bruto * 0.42) : "—"}</td>
                           <td className="px-6 py-3 text-right font-semibold text-primary">{e.valor ? moeda(e.valor) : "—"}</td>
                         </tr>
                       ))}
