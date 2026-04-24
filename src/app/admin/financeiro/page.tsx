@@ -79,7 +79,7 @@ export default function FinanceiroPage() {
   const totalLiquido = filtrados.reduce((s, e) => s + (e.valor ?? 0), 0);
   const totalVetBase = filtrados.reduce((s, e) => s + ((e.valor_bruto ?? 0) * 0.30), 0);
   const totalVet = filtrados.reduce((s, e) => s + ((e.valor_bruto ?? 0) * 0.42), 0);
-  const ticketMedio = filtrados.length > 0 ? totalLiquido / filtrados.length : 0;
+  const ticketMedio = filtrados.length > 0 ? totalBruto / filtrados.length : 0;
 
   const refMes = modo === "mensal" ? mesSel : new Date(dataFim + "T12:00:00").getMonth() + 1;
   const refAno = modo === "mensal" ? anoSel : new Date(dataFim + "T12:00:00").getFullYear();
@@ -302,29 +302,29 @@ export default function FinanceiroPage() {
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="text-[10px] text-text-muted uppercase tracking-wider border-b border-gray-100 bg-gray-50">
-                        <th className="text-left px-3 py-3 whitespace-nowrap">Data</th>
-                        <th className="text-left px-3 py-3">Paciente</th>
-                        <th className="text-left px-3 py-3">Clínica</th>
-                        <th className="text-left px-3 py-3">Serviço</th>
-                        <th className="text-left px-3 py-3">Pgto.</th>
-                        <th className="text-right px-3 py-3">Bruto</th>
-                        <th className="text-right px-3 py-3">Vet. 30%</th>
-                        <th className="text-right px-3 py-3">Vet. 42%</th>
-                        <th className="text-right px-3 py-3">Líquido</th>
+                        <th className="text-left px-2 py-3 whitespace-nowrap">Data</th>
+                        <th className="text-left px-2 py-3">Paciente</th>
+                        <th className="text-left px-2 py-3">Clínica</th>
+                        <th className="text-left px-2 py-3">Serviço</th>
+                        <th className="text-left px-2 py-3">Pgto.</th>
+                        <th className="text-right px-2 py-3">Bruto</th>
+                        <th className="text-right px-2 py-3">Vet. 30%</th>
+                        <th className="text-right px-2 py-3">Vet. 42%</th>
+                        <th className="text-right px-2 py-3">Empresa</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                       {filtrados.map(e => (
                         <tr key={e.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-3 py-2.5 text-text-muted whitespace-nowrap">{dataFmt(e.data_exame)}</td>
-                          <td className="px-3 py-2.5 font-medium text-text-main">{e.nome_paciente || e.pets?.nome || "—"}</td>
-                          <td className="px-3 py-2.5 text-text-muted">{e.clinica || "—"}</td>
-                          <td className="px-3 py-2.5 text-text-muted">{e.tipo || "—"}</td>
-                          <td className="px-3 py-2.5 text-text-muted">{e.forma_pagamento || "—"}</td>
-                          <td className="px-3 py-2.5 text-right text-text-muted">{e.valor_bruto ? moeda(e.valor_bruto) : "—"}</td>
-                          <td className="px-3 py-2.5 text-right text-text-muted">{e.valor_bruto ? moeda(e.valor_bruto * 0.30) : "—"}</td>
-                          <td className="px-3 py-2.5 text-right text-text-muted">{e.valor_bruto ? moeda(e.valor_bruto * 0.42) : "—"}</td>
-                          <td className="px-3 py-2.5 text-right font-semibold text-primary">{e.valor ? moeda(e.valor) : "—"}</td>
+                          <td className="px-2 py-2 text-text-muted whitespace-nowrap">{dataFmt(e.data_exame)}</td>
+                          <td className="px-2 py-2 font-medium text-text-main">{e.nome_paciente || e.pets?.nome || "—"}</td>
+                          <td className="px-2 py-2 text-text-muted">{e.clinica || "—"}</td>
+                          <td className="px-2 py-2 text-text-muted">{e.tipo || "—"}</td>
+                          <td className="px-2 py-2 text-text-muted">{e.forma_pagamento || "—"}</td>
+                          <td className="px-2 py-2 text-right text-text-muted">{e.valor_bruto ? moeda(e.valor_bruto) : "—"}</td>
+                          <td className="px-2 py-2 text-right text-text-muted">{e.valor_bruto ? moeda(e.valor_bruto * 0.30) : "—"}</td>
+                          <td className="px-2 py-2 text-right text-text-muted">{e.valor_bruto ? moeda(e.valor_bruto * 0.42) : "—"}</td>
+                          <td className="px-2 py-2 text-right font-semibold text-primary">{e.valor ? moeda(e.valor) : "—"}</td>
                         </tr>
                       ))}
                     </tbody>
