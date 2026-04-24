@@ -40,14 +40,30 @@ export default function FinanceiroPage() {
   const primeiroDiaMes = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}-01`;
   const [dataInicio, setDataInicio] = useState(primeiroDiaMes);
   const [dataFim, setDataFim] = useState(hoje.toISOString().split("T")[0]);
+  const [dataInicioAplicada, setDataInicioAplicada] = useState(primeiroDiaMes);
+  const [dataFimAplicada, setDataFimAplicada] = useState(hoje.toISOString().split("T")[0]);
 
   useEffect(() => {
-    createClient()
-      .from("exames")
-      .select("id, data_exame, tipo, clinica, forma_pagamento, valor, valor_bruto, nome_paciente, pets(nome)")
-      .order("data_exame", { ascending: false })
-      .limit(10000)
-      .then(({ data }) => { setExames((data as Exame[]) || []); setCarregando(false); });
+    async function fetchTodos() {
+      const supabase = createClient();
+      const PAGE = 1000;
+      let todos: Exame[] = [];
+      let from = 0;
+      while (true) {
+        const { data } = await supabase
+          .from("exames")
+          .select("id, data_exame, tipo, clinica, forma_pagamento, valor, valor_bruto, nome_paciente, pets(nome)")
+          .order("data_exame", { ascending: false })
+          .range(from, from + PAGE - 1);
+        if (!data || data.length === 0) break;
+        todos = todos.concat(data as Exame[]);
+        if (data.length < PAGE) break;
+        from += PAGE;
+      }
+      setExames(todos);
+      setCarregando(false);
+    }
+    fetchTodos();
   }, []);
 
   const filtrados = useMemo(() =>
@@ -56,8 +72,8 @@ export default function FinanceiroPage() {
       if (modo === "mensal") {
         return d.getMonth() + 1 === mesSel && d.getFullYear() === anoSel;
       }
-      return e.data_exame >= dataInicio && e.data_exame <= dataFim;
-    }), [exames, modo, mesSel, anoSel, dataInicio, dataFim]);
+      return e.data_exame >= dataInicioAplicada && e.data_exame <= dataFimAplicada;
+    }), [exames, modo, mesSel, anoSel, dataInicioAplicada, dataFimAplicada]);
 
   const totalBruto = filtrados.reduce((s, e) => s + (e.valor_bruto ?? e.valor ?? 0), 0);
   const totalLiquido = filtrados.reduce((s, e) => s + (e.valor ?? 0), 0);
@@ -113,7 +129,7 @@ export default function FinanceiroPage() {
 
   const labelPeriodo = modo === "mensal"
     ? `${MESES[mesSel - 1]} ${anoSel}`
-    : `${dataFmt(dataInicio)} a ${dataFmt(dataFim)}`;
+    : `${dataFmt(dataInicioAplicada)} a ${dataFmt(dataFimAplicada)}`;
 
   return (
     <div className="min-h-screen bg-background">
@@ -174,6 +190,12 @@ export default function FinanceiroPage() {
                 onChange={e => setDataFim(e.target.value)}
                 className="input text-sm py-2"
               />
+              <button
+                onClick={() => { setDataInicioAplicada(dataInicio); setDataFimAplicada(dataFim); }}
+                className="bg-primary text-white text-sm font-semibold px-5 py-2 rounded-xl hover:bg-primary-light transition-colors"
+              >
+                Aplicar
+              </button>
             </div>
           )}
         </div>
