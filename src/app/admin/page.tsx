@@ -81,12 +81,13 @@ export default function AdminPage() {
           }
         }
         if (!tutorId) {
+          const np = "NÃO PREENCHIDO";
           const { data: novoTutor, error: erroTutor } = await supabase
             .from("tutores").insert({
-              nome: form.nomeTutor || null,
+              nome: form.nomeTutor || np,
               cpf: cpfLimpo || null,
-              email: form.emailTutor || null,
-              whatsapp: form.whatsappTutor || null,
+              email: form.emailTutor || np,
+              whatsapp: form.whatsappTutor || np,
             }).select("id").single();
           if (erroTutor || !novoTutor) throw new Error("Erro ao cadastrar tutor.");
           tutorId = novoTutor.id;
