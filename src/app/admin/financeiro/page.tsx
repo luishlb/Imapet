@@ -33,8 +33,13 @@ export default function FinanceiroPage() {
   const [carregando, setCarregando] = useState(true);
 
   const hoje = new Date();
+  const [modo, setModo] = useState<"mensal" | "periodo">("mensal");
   const [mesSel, setMesSel] = useState(hoje.getMonth() + 1);
   const [anoSel, setAnoSel] = useState(hoje.getFullYear());
+
+  const primeiroDiaMes = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}-01`;
+  const [dataInicio, setDataInicio] = useState(primeiroDiaMes);
+  const [dataFim, setDataFim] = useState(hoje.toISOString().split("T")[0]);
 
   useEffect(() => {
     createClient()
@@ -47,8 +52,11 @@ export default function FinanceiroPage() {
   const filtrados = useMemo(() =>
     exames.filter(e => {
       const d = new Date(e.data_exame + "T12:00:00");
-      return d.getMonth() + 1 === mesSel && d.getFullYear() === anoSel;
-    }), [exames, mesSel, anoSel]);
+      if (modo === "mensal") {
+        return d.getMonth() + 1 === mesSel && d.getFullYear() === anoSel;
+      }
+      return e.data_exame >= dataInicio && e.data_exame <= dataFim;
+    }), [exames, modo, mesSel, anoSel, dataInicio, dataFim]);
 
   const totalBruto = filtrados.reduce((s, e) => s + (e.valor_bruto ?? e.valor ?? 0), 0);
   const totalLiquido = filtrados.reduce((s, e) => s + (e.valor ?? 0), 0);
@@ -56,17 +64,21 @@ export default function FinanceiroPage() {
   const totalVet = filtrados.reduce((s, e) => s + ((e.valor_bruto ?? 0) * 0.42), 0);
   const ticketMedio = filtrados.length > 0 ? totalLiquido / filtrados.length : 0;
 
+  const refMes = modo === "mensal" ? mesSel : new Date(dataFim + "T12:00:00").getMonth() + 1;
+  const refAno = modo === "mensal" ? anoSel : new Date(dataFim + "T12:00:00").getFullYear();
+
   const ultimos6 = useMemo(() => {
     return Array.from({ length: 6 }, (_, i) => {
-      const d = new Date(anoSel, mesSel - 1 - (5 - i), 1);
+      const d = new Date(refAno, refMes - 1 - (5 - i), 1);
       const m = d.getMonth() + 1;
       const a = d.getFullYear();
       const total = exames
         .filter(e => { const ed = new Date(e.data_exame + "T12:00:00"); return ed.getMonth() + 1 === m && ed.getFullYear() === a; })
         .reduce((s, e) => s + (e.valor ?? 0), 0);
-      return { label: MESES[m - 1].slice(0, 3), total, ativo: m === mesSel && a === anoSel };
+      const ativo = modo === "mensal" ? (m === mesSel && a === anoSel) : (m === refMes && a === refAno);
+      return { label: MESES[m - 1].slice(0, 3), total, ativo };
     });
-  }, [exames, mesSel, anoSel]);
+  }, [exames, modo, mesSel, anoSel, refMes, refAno]);
 
   const maxBar = Math.max(...ultimos6.map(m => m.total), 1);
 
@@ -98,6 +110,10 @@ export default function FinanceiroPage() {
     return [...set].sort((a, b) => b - a);
   }, [exames]);
 
+  const labelPeriodo = modo === "mensal"
+    ? `${MESES[mesSel - 1]} ${anoSel}`
+    : `${dataFmt(dataInicio)} a ${dataFmt(dataFim)}`;
+
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
@@ -107,20 +123,58 @@ export default function FinanceiroPage() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-10">
-        {/* Título + Filtros */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-          <div>
-            <h1 className="font-playfair text-3xl font-bold text-text-main">Dashboard financeiro</h1>
-            <p className="text-text-muted text-sm mt-1">Resumo de faturamento por período</p>
+        {/* Título */}
+        <div className="mb-6">
+          <h1 className="font-playfair text-3xl font-bold text-text-main">Dashboard financeiro</h1>
+          <p className="text-text-muted text-sm mt-1">Resumo de faturamento por período</p>
+        </div>
+
+        {/* Filtros */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm mb-8 flex flex-col sm:flex-row sm:items-center gap-4">
+          {/* Toggle */}
+          <div className="flex rounded-xl overflow-hidden border border-gray-200 shrink-0">
+            <button
+              onClick={() => setModo("mensal")}
+              className={`px-4 py-2 text-sm font-medium transition-colors ${modo === "mensal" ? "bg-primary text-white" : "bg-white text-text-muted hover:bg-gray-50"}`}
+            >
+              Mensal
+            </button>
+            <button
+              onClick={() => setModo("periodo")}
+              className={`px-4 py-2 text-sm font-medium transition-colors ${modo === "periodo" ? "bg-primary text-white" : "bg-white text-text-muted hover:bg-gray-50"}`}
+            >
+              Por período
+            </button>
           </div>
-          <div className="flex items-center gap-2">
-            <select value={mesSel} onChange={e => setMesSel(Number(e.target.value))} className="input text-sm py-2">
-              {MESES.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-            </select>
-            <select value={anoSel} onChange={e => setAnoSel(Number(e.target.value))} className="input text-sm py-2">
-              {anos.map(a => <option key={a} value={a}>{a}</option>)}
-            </select>
-          </div>
+
+          {/* Controles conforme modo */}
+          {modo === "mensal" ? (
+            <div className="flex items-center gap-2">
+              <select value={mesSel} onChange={e => setMesSel(Number(e.target.value))} className="input text-sm py-2">
+                {MESES.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+              </select>
+              <select value={anoSel} onChange={e => setAnoSel(Number(e.target.value))} className="input text-sm py-2">
+                {anos.map(a => <option key={a} value={a}>{a}</option>)}
+              </select>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm text-text-muted">De</span>
+              <input
+                type="date"
+                value={dataInicio}
+                onChange={e => setDataInicio(e.target.value)}
+                className="input text-sm py-2"
+              />
+              <span className="text-sm text-text-muted">até</span>
+              <input
+                type="date"
+                value={dataFim}
+                onChange={e => setDataFim(e.target.value)}
+                className="input text-sm py-2"
+              />
+            </div>
+          )}
         </div>
 
         {carregando ? (
@@ -129,7 +183,7 @@ export default function FinanceiroPage() {
           <>
             {/* Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-              <Card label="Exames realizados" valor={String(filtrados.length)} sub={MESES[mesSel - 1]} />
+              <Card label="Exames realizados" valor={String(filtrados.length)} sub={labelPeriodo} />
               <Card label="Faturamento bruto" valor={moeda(totalBruto)} sub="valor cobrado" />
               <Card label="Faturamento líquido" valor={moeda(totalLiquido)} sub="caixa empresa" />
             </div>
@@ -147,7 +201,7 @@ export default function FinanceiroPage() {
                   <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
                     {m.total > 0 && (
                       <span className="text-[10px] text-text-muted text-center leading-tight">
-                        {moeda(m.total).replace("R$ ", "R$")}
+                        {moeda(m.total).replace("R$ ", "R$")}
                       </span>
                     )}
                     <div
@@ -214,7 +268,7 @@ export default function FinanceiroPage() {
             <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-100">
                 <h2 className="font-semibold text-text-main">
-                  Exames — {MESES[mesSel - 1]} {anoSel}
+                  Exames — {labelPeriodo}
                   <span className="ml-2 text-text-muted font-normal text-sm">({filtrados.length})</span>
                 </h2>
               </div>
