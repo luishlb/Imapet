@@ -34,25 +34,16 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center">
-          {scrolled ? (
-            <Image
-              src="/Logomarca/imapet.png"
-              alt="IMAPET Diagnóstico Veterinário por Imagem"
-              width={110}
-              height={55}
-              className="object-contain rounded-xl transition-all duration-300"
-              priority
-            />
-          ) : (
-            <Image
-              src="/Logomarca/imapet_transparent.png"
-              alt="IMAPET Diagnóstico Veterinário por Imagem"
-              width={120}
-              height={60}
-              className="object-contain transition-all duration-300"
-              priority
-            />
-          )}
+          <Image
+            src="/Logomarca/imapet_transparent.png"
+            alt="IMAPET Diagnóstico Veterinário por Imagem"
+            width={120}
+            height={60}
+            className={`object-contain transition-all duration-300 ${
+              scrolled ? "brightness-0" : ""
+            }`}
+            priority
+          />
         </Link>
 
         {/* Desktop Nav */}
