@@ -8,22 +8,13 @@ type Clinica = { id: string; nome: string; email: string | null; whatsapp: strin
 
 type DadosEnvio = {
   nomeTutor: string;
-  cpfFormatado: string;
   emailTutor: string;
   whatsappTutor: string;
   nomePet: string;
   tipoExame: string;
   dataExame: string;
   laudoUrl: string;
-  isNovoTutor: boolean;
-  senha?: string;
 };
-
-function gerarSenha(nome: string) {
-  const primeiro = nome.trim().split(" ")[0].toLowerCase();
-  const num = Math.floor(1000 + Math.random() * 9000);
-  return `${primeiro}${num}`;
-}
 
 function formatarCPF(v: string) {
   return v.replace(/\D/g, "").slice(0, 11)
@@ -75,32 +66,25 @@ export default function AdminPage() {
     try {
       const supabase = createClient();
       const cpfLimpo = form.cpf.replace(/\D/g, "");
-      const emailInterno = `${cpfLimpo}@imapet.internal`;
 
-      // Verifica se tutor existe
-      const { data: perfilExistente } = await supabase
-        .from("profiles").select("id").eq("cpf", cpfLimpo).single();
+      // Verifica se tutor já existe
+      const { data: tutorExistente } = await supabase
+        .from("tutores").select("id").eq("cpf", cpfLimpo).single();
 
       let tutorId: string;
-      let isNovoTutor = false;
-      let senha: string | undefined;
-
-      if (perfilExistente) {
-        tutorId = perfilExistente.id;
+      if (tutorExistente) {
+        tutorId = tutorExistente.id;
       } else {
-        isNovoTutor = true;
-        senha = gerarSenha(form.nomeTutor);
-        const { data: novoUser, error: erroCriacao } = await supabase.auth.signUp({
-          email: emailInterno,
-          password: senha,
-          options: { data: { nome: form.nomeTutor } },
-        });
-        if (erroCriacao || !novoUser.user) throw new Error("Erro ao criar conta do tutor.");
-        tutorId = novoUser.user.id;
-        await supabase.from("profiles").insert({ id: tutorId, nome: form.nomeTutor, cpf: cpfLimpo });
+        const { data: novoTutor, error: erroTutor } = await supabase
+          .from("tutores").insert({
+            nome: form.nomeTutor, cpf: cpfLimpo,
+            email: form.emailTutor, whatsapp: form.whatsappTutor,
+          }).select("id").single();
+        if (erroTutor || !novoTutor) throw new Error("Erro ao cadastrar tutor.");
+        tutorId = novoTutor.id;
       }
 
-      // Verifica se pet existe
+      // Verifica se pet já existe
       const { data: petExistente } = await supabase
         .from("pets").select("id").eq("tutor_id", tutorId).eq("nome", form.nomePet).single();
 
@@ -135,10 +119,10 @@ export default function AdminPage() {
       if (erroExame) throw new Error("Erro ao registrar o exame.");
 
       setDadosEnvio({
-        nomeTutor: form.nomeTutor, cpfFormatado: form.cpf,
+        nomeTutor: form.nomeTutor,
         emailTutor: form.emailTutor, whatsappTutor: form.whatsappTutor,
         nomePet: form.nomePet, tipoExame: form.tipoExame,
-        dataExame: form.dataExame, laudoUrl, isNovoTutor, senha,
+        dataExame: form.dataExame, laudoUrl,
       });
       setEtapa("envio");
       setEnviados([]);
@@ -342,14 +326,6 @@ export default function AdminPage() {
               </div>
             </div>
 
-            {/* Credenciais novo tutor */}
-            {dadosEnvio.isNovoTutor && (
-              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-6">
-                <p className="text-sm font-semibold text-amber-800 mb-2">Tutor novo — envie as credenciais pelo WhatsApp:</p>
-                <p className="text-sm text-amber-900">CPF: <strong>{dadosEnvio.cpfFormatado}</strong></p>
-                <p className="text-sm text-amber-900">Senha: <strong>{dadosEnvio.senha}</strong></p>
-              </div>
-            )}
 
             <h2 className="font-playfair text-2xl font-bold text-text-main mb-2">Como deseja enviar o laudo?</h2>
             <p className="text-text-muted text-sm mb-6">Escolha uma ou mais opções abaixo.</p>
