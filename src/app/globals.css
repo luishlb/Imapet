@@ -16,3 +16,14 @@ body {
     text-wrap: balance;
   }
 }
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(36px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

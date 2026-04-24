@@ -1,3 +1,7 @@
+"use client";
+
+import { useInView } from "@/hooks/useInView";
+
 const steps = [
   {
     number: "01",
@@ -26,21 +30,32 @@ const steps = [
 ];
 
 export default function ComoFunciona() {
+  const { ref, inView } = useInView();
+
   return (
-    <section id="como-funciona" className="bg-background py-24 px-6">
-      <div className="max-w-7xl mx-auto">
+    <section id="como-funciona" className="bg-background py-24 px-6 relative overflow-hidden">
+      {/* Decorative blobs */}
+      <div className="absolute top-0 right-0 w-[450px] h-[450px] bg-primary/4 rounded-full blur-3xl translate-x-1/3 -translate-y-1/3 pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-[350px] h-[350px] bg-accent/15 rounded-full blur-3xl -translate-x-1/3 translate-y-1/3 pointer-events-none" />
+
+      <div className="max-w-7xl mx-auto relative" ref={ref}>
         {/* Header */}
-        <div className="text-center mb-20">
-          <span className="text-primary text-xs font-semibold tracking-[0.2em] uppercase">
-            Passo a passo
-          </span>
-          <h2 className="font-playfair text-4xl md:text-5xl text-text-main font-bold mt-4 mb-6 leading-tight">
-            Simples para você,<br />melhor para o pet
-          </h2>
-          <p className="text-text-muted text-lg max-w-2xl mx-auto leading-relaxed">
-            A IMAPET vai até onde o pet está. Sem deslocamentos desnecessários,
-            sem estresse extra — apenas cuidado e diagnóstico de qualidade.
-          </p>
+        <div
+          className={!inView ? "opacity-0" : ""}
+          style={inView ? { animation: "fadeUp 0.7s ease-out both" } : {}}
+        >
+          <div className="text-center mb-20">
+            <span className="text-primary text-xs font-semibold tracking-[0.2em] uppercase">
+              Passo a passo
+            </span>
+            <h2 className="font-playfair text-4xl md:text-5xl text-text-main font-bold mt-4 mb-6 leading-tight">
+              Simples para você,<br />melhor para o pet
+            </h2>
+            <p className="text-text-muted text-lg max-w-2xl mx-auto leading-relaxed">
+              A IMAPET vai até onde o pet está. Sem deslocamentos desnecessários,
+              sem estresse extra — apenas cuidado e diagnóstico de qualidade.
+            </p>
+          </div>
         </div>
 
         {/* Steps */}
@@ -49,9 +64,17 @@ export default function ComoFunciona() {
           <div className="hidden lg:block absolute top-10 left-[12.5%] right-[12.5%] h-px bg-accent/40 z-0" />
 
           {steps.map((step, index) => (
-            <div key={step.number} className="relative z-10">
+            <div
+              key={step.number}
+              className={`relative z-10 ${!inView ? "opacity-0" : ""}`}
+              style={
+                inView
+                  ? { animation: `fadeUp 0.7s ease-out ${index * 130 + 200}ms both` }
+                  : {}
+              }
+            >
               {/* Number bubble */}
-              <div className="w-20 h-20 rounded-full bg-card border-2 border-accent/30 flex items-center justify-center mb-6 mx-auto lg:mx-0">
+              <div className="w-20 h-20 rounded-full bg-card border-2 border-accent/30 flex items-center justify-center mb-6 mx-auto lg:mx-0 shadow-sm">
                 <span className="font-playfair text-2xl font-bold text-primary">
                   {step.number}
                 </span>
@@ -78,7 +101,10 @@ export default function ComoFunciona() {
         </div>
 
         {/* CTA */}
-        <div className="text-center mt-16">
+        <div
+          className={`text-center mt-16 ${!inView ? "opacity-0" : ""}`}
+          style={inView ? { animation: "fadeUp 0.7s ease-out 700ms both" } : {}}
+        >
           <a
             href="https://wa.me/5581996741525"
             target="_blank"

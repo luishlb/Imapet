@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 
@@ -32,23 +33,17 @@ export default function Navbar() {
     >
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-3">
-          <div>
-            <span
-              className={`font-playfair text-2xl font-bold tracking-wide transition-colors duration-300 ${
-                scrolled ? "text-primary" : "text-white"
-              }`}
-            >
-              IMAPET
-            </span>
-            <p
-              className={`text-xs leading-tight transition-colors duration-300 hidden sm:block ${
-                scrolled ? "text-text-muted" : "text-white/70"
-              }`}
-            >
-              Diagnóstico Veterinário por Imagem
-            </p>
-          </div>
+        <Link href="/" className="flex items-center">
+          <Image
+            src="/logomarca/imapet_transparent.png"
+            alt="IMAPET Diagnóstico Veterinário por Imagem"
+            width={120}
+            height={60}
+            className={`object-contain transition-all duration-300 ${
+              scrolled ? "brightness-0" : "brightness-100"
+            }`}
+            priority
+          />
         </Link>
 
         {/* Desktop Nav */}
