@@ -87,10 +87,10 @@ export default function FinanceiroPage() {
     <div className="min-h-screen bg-background">
       <header className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
         <Image src="/Logomarca/imapet_transparent.png" alt="IMAPET" width={100} height={50} className="brightness-0" />
-        <span className="text-sm text-text-muted font-medium">Financeiro — Tabela</span>
-        <div className="flex items-center gap-4">
-          <Link href="/admin/financeiro/dashboard" className="text-sm text-primary font-medium hover:underline">Dashboard →</Link>
-          <Link href="/admin" className="text-sm text-text-muted hover:underline">← Novo exame</Link>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold px-4 py-2 rounded-xl bg-primary text-white">Tabela</span>
+          <Link href="/admin/financeiro/dashboard" className="text-sm font-medium px-4 py-2 rounded-xl border border-gray-200 text-text-muted hover:border-primary hover:text-primary transition-colors">Dashboard</Link>
+          <Link href="/admin" className="text-sm font-medium px-4 py-2 rounded-xl border border-gray-200 text-text-muted hover:border-primary hover:text-primary transition-colors">+ Novo exame</Link>
         </div>
       </header>
 

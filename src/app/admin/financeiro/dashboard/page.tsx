@@ -93,7 +93,7 @@ export default function DashboardPage() {
       const a = d.getFullYear();
       const total = exames
         .filter(e => { const ed = new Date(e.data_exame + "T12:00:00"); return ed.getMonth() + 1 === m && ed.getFullYear() === a; })
-        .reduce((s, e) => s + (e.valor ?? 0), 0);
+        .reduce((s, e) => s + (e.valor_bruto ?? e.valor ?? 0), 0);
       const ativo = modo === "mensal" ? (m === mesSel && a === anoSel) : (m === refMes && a === refAno);
       return { label: MESES[m - 1].slice(0, 3), total, ativo };
     });
@@ -133,13 +133,15 @@ export default function DashboardPage() {
     ? `${MESES[mesSel - 1]} ${anoSel}`
     : `${dataInicioAplicada.split("-").reverse().join("/")} a ${dataFimAplicada.split("-").reverse().join("/")}`;
 
-  function calcularVet() {
+  function calcularVet(inicioOverride?: string, fimOverride?: string) {
+    const inicio = inicioOverride ?? vetInicioAplicado;
+    const fim = fimOverride ?? vetFimAplicado;
     const examesVet = exames.filter(e => {
       if (vetModo === "mensal") {
         const d = new Date(e.data_exame + "T12:00:00");
         return d.getMonth() + 1 === vetMes && d.getFullYear() === vetAno;
       }
-      return e.data_exame >= vetInicioAplicado && e.data_exame <= vetFimAplicado;
+      return e.data_exame >= inicio && e.data_exame <= fim;
     });
     const bruto = examesVet.reduce((s, e) => s + (e.valor_bruto ?? e.valor ?? 0), 0);
     setResultadoVet({ bruto, v30: bruto * 0.30, v42: bruto * 0.42, count: examesVet.length });
@@ -149,10 +151,10 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-background">
       <header className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
         <Image src="/Logomarca/imapet_transparent.png" alt="IMAPET" width={100} height={50} className="brightness-0" />
-        <span className="text-sm text-text-muted font-medium">Financeiro — Dashboard</span>
-        <div className="flex items-center gap-4">
-          <Link href="/admin/financeiro" className="text-sm text-primary font-medium hover:underline">← Tabela</Link>
-          <Link href="/admin" className="text-sm text-text-muted hover:underline">Novo exame</Link>
+        <div className="flex items-center gap-2">
+          <Link href="/admin/financeiro" className="text-sm font-medium px-4 py-2 rounded-xl border border-gray-200 text-text-muted hover:border-primary hover:text-primary transition-colors">Tabela</Link>
+          <span className="text-sm font-semibold px-4 py-2 rounded-xl bg-primary text-white">Dashboard</span>
+          <Link href="/admin" className="text-sm font-medium px-4 py-2 rounded-xl border border-gray-200 text-text-muted hover:border-primary hover:text-primary transition-colors">+ Novo exame</Link>
         </div>
       </header>
 
@@ -289,10 +291,20 @@ export default function DashboardPage() {
                     <input type="date" value={vetInicio} onChange={e => setVetInicio(e.target.value)} className="input text-sm py-2" />
                     <span className="text-sm text-text-muted">até</span>
                     <input type="date" value={vetFim} onChange={e => setVetFim(e.target.value)} className="input text-sm py-2" />
-                    <button onClick={() => { setVetInicioAplicado(vetInicio); setVetFimAplicado(vetFim); }} className="bg-gray-100 text-text-main text-sm font-medium px-4 py-2 rounded-xl hover:bg-gray-200 transition-colors">Aplicar</button>
                   </div>
                 )}
-                <button onClick={calcularVet} className="bg-primary text-white text-sm font-semibold px-6 py-2 rounded-xl hover:bg-primary-light transition-colors shrink-0">
+                <button
+                  onClick={() => {
+                    if (vetModo === "periodo") {
+                      setVetInicioAplicado(vetInicio);
+                      setVetFimAplicado(vetFim);
+                      calcularVet(vetInicio, vetFim);
+                    } else {
+                      calcularVet();
+                    }
+                  }}
+                  className="bg-primary text-white text-sm font-semibold px-6 py-2 rounded-xl hover:bg-primary-light transition-colors shrink-0"
+                >
                   Calcular
                 </button>
               </div>
