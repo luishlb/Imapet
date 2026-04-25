@@ -7,19 +7,6 @@ import { createClient } from "@/lib/supabase/client";
 
 type Clinica = { id: string; nome: string; email: string | null; whatsapp: string | null };
 
-const SERVICOS = [
-  "USG abdominal",
-  "USG geral / Ultrassonografia",
-  "USG encefálica",
-  "USG de face",
-  "USG de cabeça",
-  "Cistocentese",
-  "Abdominocentese",
-  "Eletrocardiograma",
-  "Drenagem",
-  "Outro",
-];
-
 type DadosEnvio = {
   nomeTutor: string;
   emailTutor: string;
@@ -45,6 +32,9 @@ function formatarData(data: string) {
 
 export default function AdminPage() {
   const [clinicas, setClinicas] = useState<Clinica[]>([]);
+  const [servicos, setServicos] = useState<string[]>([]);
+  const [formasPagamento, setFormasPagamento] = useState<string[]>([]);
+
   const [etapa, setEtapa] = useState<"formulario" | "envio">("formulario");
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState("");
@@ -58,23 +48,73 @@ export default function AdminPage() {
     nomeTutor: "", cpf: "", emailTutor: "", whatsappTutor: "",
     nomePet: "", especie: "Cão", raca: "",
     dataExame: new Date().toISOString().split("T")[0],
-    clinica: "", formaPagamento: "Pix", valorBruto: "", valor: "", observacoes: "",
+    clinica: "", formaPagamento: "", valorBruto: "", valor: "", observacoes: "",
   });
   const [tiposExame, setTiposExame] = useState<string[]>([]);
   const [arquivo, setArquivo] = useState<File | null>(null);
+
+  // estado para adicionar novos itens inline
+  const [novoServico, setNovoServico] = useState("");
+  const [novaFormaPagamento, setNovaFormaPagamento] = useState("");
+  const [novaClinica, setNovaClinica] = useState("");
+  const [mostrarAddServico, setMostrarAddServico] = useState(false);
+  const [mostrarAddPagamento, setMostrarAddPagamento] = useState(false);
+  const [mostrarAddClinica, setMostrarAddClinica] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.from("clinicas").select("*").order("nome")
+      .then(({ data }) => setClinicas(data || []));
+    supabase.from("servicos").select("nome").order("id")
+      .then(({ data }) => setServicos((data || []).map((s: { nome: string }) => s.nome)));
+    supabase.from("formas_pagamento").select("nome").order("id")
+      .then(({ data }) => {
+        const lista = (data || []).map((f: { nome: string }) => f.nome);
+        setFormasPagamento(lista);
+        if (lista.length > 0) setForm(f => ({ ...f, formaPagamento: lista[0] }));
+      });
+  }, []);
 
   function toggleServico(s: string) {
     setTiposExame(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
   }
 
-  useEffect(() => {
-    createClient().from("clinicas").select("*").order("nome")
-      .then(({ data }) => setClinicas(data || []));
-  }, []);
-
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
     const { name, value } = e.target;
     setForm(f => ({ ...f, [name]: name === "cpf" ? formatarCPF(value) : value }));
+  }
+
+  async function adicionarServico() {
+    const nome = novoServico.trim();
+    if (!nome || servicos.includes(nome)) return;
+    await createClient().from("servicos").insert({ nome });
+    setServicos(prev => [...prev, nome]);
+    toggleServico(nome);
+    setNovoServico("");
+    setMostrarAddServico(false);
+  }
+
+  async function adicionarFormaPagamento() {
+    const nome = novaFormaPagamento.trim();
+    if (!nome || formasPagamento.includes(nome)) return;
+    await createClient().from("formas_pagamento").insert({ nome });
+    setFormasPagamento(prev => [...prev, nome]);
+    setForm(f => ({ ...f, formaPagamento: nome }));
+    setNovaFormaPagamento("");
+    setMostrarAddPagamento(false);
+  }
+
+  async function adicionarClinica() {
+    const nome = novaClinica.trim();
+    if (!nome) return;
+    const { data } = await createClient()
+      .from("clinicas").insert({ nome, email: null, whatsapp: null }).select("*").single();
+    if (data) {
+      setClinicas(prev => [...prev, data].sort((a, b) => a.nome.localeCompare(b.nome)));
+      setForm(f => ({ ...f, clinica: nome }));
+    }
+    setNovaClinica("");
+    setMostrarAddClinica(false);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -86,17 +126,13 @@ export default function AdminPage() {
       const supabase = createClient();
       const cpfLimpo = form.cpf.replace(/\D/g, "");
 
-      // Tutor é totalmente opcional
       let tutorId: string | null = null;
       const temDadosTutor = cpfLimpo || form.nomeTutor || form.emailTutor || form.whatsappTutor;
       if (temDadosTutor) {
-        // Se tem CPF, tenta reaproveitar tutor existente
         if (cpfLimpo) {
           const { data: tutorExistente } = await supabase
             .from("tutores").select("id").eq("cpf", cpfLimpo).single();
-          if (tutorExistente) {
-            tutorId = tutorExistente.id;
-          }
+          if (tutorExistente) tutorId = tutorExistente.id;
         }
         if (!tutorId) {
           const np = "NÃO PREENCHIDO";
@@ -112,7 +148,6 @@ export default function AdminPage() {
         }
       }
 
-      // Pet: se tem tutor, tenta reaproveitar o mesmo pet pelo nome
       let petId: string;
       if (tutorId) {
         const { data: petExistente } = await supabase
@@ -134,7 +169,6 @@ export default function AdminPage() {
         petId = novoPet.id;
       }
 
-      // Upload do laudo
       let laudoUrl = "";
       if (arquivo) {
         const nomeSeguro = arquivo.name.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -145,7 +179,6 @@ export default function AdminPage() {
         laudoUrl = urlData.publicUrl;
       }
 
-      // Registra exame
       const { error: erroExame } = await supabase.from("exames").insert({
         pet_id: petId, tipo: tiposExame.join(", ") || null, data_exame: form.dataExame,
         clinica: form.clinica, forma_pagamento: form.formaPagamento,
@@ -175,20 +208,17 @@ export default function AdminPage() {
   async function enviarEmail(para: string, tipo: "clinica" | "cliente", chave: string, nomeClinica?: string) {
     if (!dadosEnvio) return;
     setEnviando(chave);
-
     const dados = {
       nomePet: dadosEnvio.nomePet,
       laudoUrl: dadosEnvio.laudoUrl,
       nomeTutor: dadosEnvio.nomeTutor,
       nomeClinica: nomeClinica || "",
     };
-
     const res = await fetch("/api/enviar-email", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ tipo, para, dados }),
     });
-
     if (res.ok) setEnviados(v => [...v, chave]);
     setEnviando(null);
   }
@@ -207,7 +237,7 @@ export default function AdminPage() {
       nomeTutor: "", cpf: "", emailTutor: "", whatsappTutor: "",
       nomePet: "", especie: "Cão", raca: "",
       dataExame: new Date().toISOString().split("T")[0],
-      clinica: "", formaPagamento: "Pix", valorBruto: "", valor: "", observacoes: "",
+      clinica: "", formaPagamento: formasPagamento[0] || "", valorBruto: "", valor: "", observacoes: "",
     });
     setTiposExame([]);
     setArquivo(null);
@@ -288,12 +318,14 @@ export default function AdminPage() {
               {/* Exame */}
               <div className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
                 <h2 className="font-semibold text-text-main">Dados do exame</h2>
+
+                {/* Serviços */}
                 <div>
                   <label className="block text-xs font-medium text-text-muted mb-2">
                     Serviços <span className="text-gray-300 font-normal">(selecione um ou mais)</span>
                   </label>
                   <div className="flex flex-wrap gap-2">
-                    {SERVICOS.map(s => (
+                    {servicos.map(s => (
                       <button key={s} type="button" onClick={() => toggleServico(s)}
                         className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
                           tiposExame.includes(s)
@@ -303,31 +335,103 @@ export default function AdminPage() {
                         {s}
                       </button>
                     ))}
+                    {mostrarAddServico ? (
+                      <div className="flex items-center gap-1">
+                        <input
+                          value={novoServico}
+                          onChange={e => setNovoServico(e.target.value)}
+                          onKeyDown={e => e.key === "Enter" && (e.preventDefault(), adicionarServico())}
+                          placeholder="Nome do serviço"
+                          autoFocus
+                          className="text-xs border border-gray-200 rounded-full px-3 py-1.5 outline-none focus:border-primary w-40"
+                        />
+                        <button type="button" onClick={adicionarServico}
+                          className="text-xs bg-primary text-white px-2.5 py-1.5 rounded-full font-medium">✓</button>
+                        <button type="button" onClick={() => { setMostrarAddServico(false); setNovoServico(""); }}
+                          className="text-xs text-text-muted px-1">✕</button>
+                      </div>
+                    ) : (
+                      <button type="button" onClick={() => setMostrarAddServico(true)}
+                        className="px-3 py-1.5 rounded-full text-xs font-medium border border-dashed border-gray-300 text-gray-400 hover:border-primary hover:text-primary transition-all">
+                        + novo
+                      </button>
+                    )}
                   </div>
                   {tiposExame.length === 0 && (
-                    <p className="text-xs text-red-400 mt-1">Selecione ao menos um serviço</p>
+                    <p className="text-xs text-red-400 mt-1.5">Selecione ao menos um serviço</p>
                   )}
                 </div>
+
+                {/* Data */}
                 <div>
                   <label className="block text-xs font-medium text-text-muted mb-1.5">Data do exame</label>
                   <input name="dataExame" value={form.dataExame} onChange={handleChange} type="date" required className="input" />
                 </div>
+
+                {/* Clínica */}
                 <div>
                   <label className="block text-xs font-medium text-text-muted mb-1.5">Clínica</label>
-                  <input name="clinica" value={form.clinica} onChange={handleChange} placeholder="Nome da clínica" list="clinicas-list" className="input" />
-                  <datalist id="clinicas-list">
-                    {clinicas.map(c => <option key={c.id} value={c.nome} />)}
-                  </datalist>
+                  <div className="flex items-center gap-2">
+                    <input name="clinica" value={form.clinica} onChange={handleChange} placeholder="Nome da clínica" list="clinicas-list" className="input flex-1" />
+                    <datalist id="clinicas-list">
+                      {clinicas.map(c => <option key={c.id} value={c.nome} />)}
+                    </datalist>
+                    {mostrarAddClinica ? (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <input
+                          value={novaClinica}
+                          onChange={e => setNovaClinica(e.target.value)}
+                          onKeyDown={e => e.key === "Enter" && (e.preventDefault(), adicionarClinica())}
+                          placeholder="Nome"
+                          autoFocus
+                          className="input text-sm w-32"
+                        />
+                        <button type="button" onClick={adicionarClinica}
+                          className="bg-primary text-white text-sm px-3 py-2 rounded-xl">✓</button>
+                        <button type="button" onClick={() => { setMostrarAddClinica(false); setNovaClinica(""); }}
+                          className="text-text-muted text-sm px-1">✕</button>
+                      </div>
+                    ) : (
+                      <button type="button" onClick={() => setMostrarAddClinica(true)}
+                        className="shrink-0 text-sm text-primary border border-primary rounded-xl px-3 py-2 hover:bg-primary hover:text-white transition-all">
+                        +
+                      </button>
+                    )}
+                  </div>
                 </div>
+
+                {/* Pagamento */}
                 <div>
                   <label className="block text-xs font-medium text-text-muted mb-1.5">Forma de pagamento</label>
-                  <select name="formaPagamento" value={form.formaPagamento} onChange={handleChange} className="input">
-                    <option>Pix</option>
-                    <option>Cartão de crédito</option>
-                    <option>Cartão de débito</option>
-                    <option>Dinheiro</option>
-                  </select>
+                  <div className="flex items-center gap-2">
+                    <select name="formaPagamento" value={form.formaPagamento} onChange={handleChange} className="input flex-1">
+                      {formasPagamento.map(f => <option key={f}>{f}</option>)}
+                    </select>
+                    {mostrarAddPagamento ? (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <input
+                          value={novaFormaPagamento}
+                          onChange={e => setNovaFormaPagamento(e.target.value)}
+                          onKeyDown={e => e.key === "Enter" && (e.preventDefault(), adicionarFormaPagamento())}
+                          placeholder="Nome"
+                          autoFocus
+                          className="input text-sm w-28"
+                        />
+                        <button type="button" onClick={adicionarFormaPagamento}
+                          className="bg-primary text-white text-sm px-3 py-2 rounded-xl">✓</button>
+                        <button type="button" onClick={() => { setMostrarAddPagamento(false); setNovaFormaPagamento(""); }}
+                          className="text-text-muted text-sm px-1">✕</button>
+                      </div>
+                    ) : (
+                      <button type="button" onClick={() => setMostrarAddPagamento(true)}
+                        className="shrink-0 text-sm text-primary border border-primary rounded-xl px-3 py-2 hover:bg-primary hover:text-white transition-all">
+                        +
+                      </button>
+                    )}
+                  </div>
                 </div>
+
+                {/* Valores */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-text-muted mb-1.5">
@@ -340,6 +444,8 @@ export default function AdminPage() {
                     <input name="valor" value={form.valor} onChange={handleChange} type="number" step="0.01" min="0" placeholder="0,00" className="input" />
                   </div>
                 </div>
+
+                {/* Observações */}
                 <div>
                   <label className="block text-xs font-medium text-text-muted mb-1.5">Observações</label>
                   <textarea name="observacoes" value={form.observacoes} onChange={handleChange} rows={3} placeholder="Observações clínicas (opcional)" className="input resize-none" />
@@ -386,12 +492,10 @@ export default function AdminPage() {
               </div>
             </div>
 
-
             <h2 className="font-playfair text-2xl font-bold text-text-main mb-2">Como deseja enviar o laudo?</h2>
             <p className="text-text-muted text-sm mb-6">Escolha uma ou mais opções abaixo.</p>
 
             <div className="space-y-3">
-              {/* Clínicas cadastradas */}
               {clinicas.filter(c => c.email).map(c => (
                 <button key={c.id}
                   onClick={() => enviarEmail(c.email!, "clinica", `clinica-${c.id}`, c.nome)}
@@ -408,7 +512,6 @@ export default function AdminPage() {
                 </button>
               ))}
 
-              {/* Outra clínica */}
               <div className="bg-white rounded-xl border-2 border-gray-200 overflow-hidden">
                 <button type="button" onClick={() => setMostrarOutra(!mostrarOutra)}
                   className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition text-left">
@@ -428,7 +531,6 @@ export default function AdminPage() {
                 )}
               </div>
 
-              {/* Enviar para o cliente */}
               {dadosEnvio.emailTutor && (
                 <button onClick={() => enviarEmail(dadosEnvio.emailTutor, "cliente", "cliente")}
                   disabled={enviando === "cliente" || enviados.includes("cliente")}
@@ -444,7 +546,6 @@ export default function AdminPage() {
                 </button>
               )}
 
-              {/* WhatsApp */}
               {dadosEnvio.whatsappTutor && (
                 <button onClick={() => abrirWhatsApp(dadosEnvio.whatsappTutor)}
                   className="w-full flex items-center gap-3 px-5 py-4 rounded-xl border-2 border-gray-200 bg-white hover:border-green-400 hover:bg-green-50 transition text-left">
