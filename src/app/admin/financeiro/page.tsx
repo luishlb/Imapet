@@ -14,6 +14,7 @@ type Exame = {
   valor: number | null;
   valor_bruto: number | null;
   nome_paciente: string | null;
+  laudo_url: string | null;
   pets: { nome: string } | null;
 };
 
@@ -48,7 +49,7 @@ async function fetchTodos(): Promise<Exame[]> {
   while (true) {
     const { data } = await supabase
       .from("exames")
-      .select("id, data_exame, tipo, clinica, forma_pagamento, valor, valor_bruto, nome_paciente, pets(nome)")
+      .select("id, data_exame, tipo, clinica, forma_pagamento, valor, valor_bruto, nome_paciente, laudo_url, pets(nome)")
       .order("data_exame", { ascending: false })
       .order("id", { ascending: false })
       .range(from, from + PAGE - 1);
@@ -159,6 +160,7 @@ export default function FinanceiroPage() {
                       <th className="text-right px-2 py-3">Bruto</th>
                       <th className="text-right px-2 py-3">Vet. 42%</th>
                       <th className="text-right px-2 py-3">Empresa</th>
+                      <th className="px-2 py-3"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
@@ -172,6 +174,11 @@ export default function FinanceiroPage() {
                         <td className="px-2 py-2 text-right text-text-muted">{e.valor_bruto ? moeda(e.valor_bruto) : "—"}</td>
                         <td className="px-2 py-2 text-right text-text-muted">{e.valor_bruto ? moeda(e.valor_bruto * 0.42) : "—"}</td>
                         <td className="px-2 py-2 text-right font-semibold text-primary">{e.valor ? moeda(e.valor) : "—"}</td>
+                        <td className="px-2 py-2 text-center">
+                          {e.laudo_url
+                            ? <a href={e.laudo_url} target="_blank" rel="noopener noreferrer" title="Ver laudo" className="text-base hover:opacity-70 transition-opacity">📄</a>
+                            : <span className="text-gray-200">—</span>}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
