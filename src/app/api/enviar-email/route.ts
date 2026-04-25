@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     const saudacao = tipo === "clinica" ? (nomeClinica || "prezados") : (nomeTutor || "prezado(a)");
 
     // Busca o PDF e anexa ao email
-    let attachments = [];
+    let attachments: { filename: string; content: Buffer }[] = [];
     if (laudoUrl) {
       const response = await fetch(laudoUrl);
       const buffer = await response.arrayBuffer();
