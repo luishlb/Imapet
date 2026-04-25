@@ -261,6 +261,7 @@ export default function AdminPage() {
       <header className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
         <Image src="/Logomarca/imapet_transparent.png" alt="IMAPET" width={100} height={50} className="brightness-0" />
         <span className="text-sm text-text-muted font-medium">Painel da Veterinária</span>
+        <Link href="/admin/recibo" className="text-sm font-medium px-4 py-2 rounded-xl border border-gray-200 text-text-muted hover:border-primary hover:text-primary transition-colors">Gerar recibo</Link>
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-10">
