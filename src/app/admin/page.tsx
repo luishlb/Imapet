@@ -60,6 +60,7 @@ export default function AdminPage() {
   const [mostrarAddPagamento, setMostrarAddPagamento] = useState(false);
   const [mostrarSugestoesCli, setMostrarSugestoesCli] = useState(false);
   const [emailClinicaInput, setEmailClinicaInput] = useState("");
+  const [whatsappClinicaInput, setWhatsappClinicaInput] = useState("");
 
   useEffect(() => {
     const supabase = createClient();
@@ -119,6 +120,14 @@ export default function AdminPage() {
     await createClient().from("clinicas").update({ email }).eq("id", clinicaId);
     setClinicas(prev => prev.map(c => c.id === clinicaId ? { ...c, email } : c));
     setEmailClinicaInput("");
+  }
+
+  async function salvarWhatsappClinica(clinicaId: string) {
+    const whatsapp = whatsappClinicaInput.trim();
+    if (!whatsapp) return;
+    await createClient().from("clinicas").update({ whatsapp }).eq("id", clinicaId);
+    setClinicas(prev => prev.map(c => c.id === clinicaId ? { ...c, whatsapp } : c));
+    setWhatsappClinicaInput("");
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -421,30 +430,46 @@ export default function AdminPage() {
                   {(() => {
                     const sel = clinicas.find(c => c.nome.toLowerCase() === form.clinica.toLowerCase().trim());
                     if (!sel) return null;
-                    if (sel.email) return (
-                      <div className="mt-2 flex items-center gap-2 text-xs text-text-muted bg-gray-50 rounded-lg px-3 py-2">
-                        <span>📧</span>
-                        <span>{sel.email}</span>
-                      </div>
-                    );
                     return (
-                      <div className="mt-2 space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="email"
-                            value={emailClinicaInput}
-                            onChange={e => setEmailClinicaInput(e.target.value)}
-                            onKeyDown={e => e.key === "Enter" && (e.preventDefault(), salvarEmailClinica(sel.id))}
-                            placeholder="email@clinica.com.br"
-                            className="input text-sm flex-1"
-                          />
-                          <button type="button" onClick={() => salvarEmailClinica(sel.id)}
-                            disabled={!emailClinicaInput.trim()}
-                            className="bg-primary text-white text-sm font-medium px-4 py-2 rounded-xl hover:bg-primary-light transition disabled:opacity-50 shrink-0">
-                            Salvar
-                          </button>
-                        </div>
-                        <p className="text-xs text-text-muted">Este e-mail ficará cadastrado e vinculado a <strong>{sel.nome}</strong> para envios futuros.</p>
+                      <div className="mt-2 space-y-2">
+                        {/* Email */}
+                        {sel.email ? (
+                          <div className="flex items-center gap-2 text-xs text-text-muted bg-gray-50 rounded-lg px-3 py-2">
+                            <span>📧</span><span>{sel.email}</span>
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <input type="email" value={emailClinicaInput} onChange={e => setEmailClinicaInput(e.target.value)}
+                                onKeyDown={e => e.key === "Enter" && (e.preventDefault(), salvarEmailClinica(sel.id))}
+                                placeholder="email@clinica.com.br" className="input text-sm flex-1" />
+                              <button type="button" onClick={() => salvarEmailClinica(sel.id)} disabled={!emailClinicaInput.trim()}
+                                className="bg-primary text-white text-sm font-medium px-4 py-2 rounded-xl hover:bg-primary-light transition disabled:opacity-50 shrink-0">
+                                Salvar
+                              </button>
+                            </div>
+                            <p className="text-xs text-text-muted">E-mail ficará vinculado a <strong>{sel.nome}</strong> para envios futuros.</p>
+                          </div>
+                        )}
+                        {/* WhatsApp */}
+                        {sel.whatsapp ? (
+                          <div className="flex items-center gap-2 text-xs text-text-muted bg-gray-50 rounded-lg px-3 py-2">
+                            <span>💬</span><span>{sel.whatsapp}</span>
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <input type="tel" value={whatsappClinicaInput} onChange={e => setWhatsappClinicaInput(e.target.value)}
+                                onKeyDown={e => e.key === "Enter" && (e.preventDefault(), salvarWhatsappClinica(sel.id))}
+                                placeholder="(81) 99999-9999" className="input text-sm flex-1" />
+                              <button type="button" onClick={() => salvarWhatsappClinica(sel.id)} disabled={!whatsappClinicaInput.trim()}
+                                className="bg-primary text-white text-sm font-medium px-4 py-2 rounded-xl hover:bg-primary-light transition disabled:opacity-50 shrink-0">
+                                Salvar
+                              </button>
+                            </div>
+                            <p className="text-xs text-text-muted">Telefone ficará vinculado a <strong>{sel.nome}</strong> para contatos futuros.</p>
+                          </div>
+                        )}
                       </div>
                     );
                   })()}
