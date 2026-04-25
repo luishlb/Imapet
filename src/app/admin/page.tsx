@@ -175,8 +175,8 @@ export default function AdminPage() {
       }
 
       const vBruto = form.valorBruto ? parseFloat(form.valorBruto) : null;
-      const pct = form.desconto ? parseFloat(form.desconto) : null;
-      const vLiq = vBruto !== null && pct !== null ? parseFloat((vBruto * (1 - pct / 100)).toFixed(2)) : null;
+      const desc = form.desconto ? parseFloat(form.desconto) : null;
+      const vLiq = vBruto !== null && desc !== null ? parseFloat((vBruto - desc).toFixed(2)) : null;
 
       const { error: erroExame } = await supabase.from("exames").insert({
         pet_id: petId, tipo: tiposExame.join(", ") || null, data_exame: form.dataExame,
@@ -445,15 +445,15 @@ export default function AdminPage() {
                     <input name="valorBruto" value={form.valorBruto} onChange={handleChange} type="number" step="0.01" min="0" placeholder="0,00" className="input" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-text-muted mb-1.5">Desconto (%)</label>
-                    <input name="desconto" value={form.desconto} onChange={handleChange} type="number" step="0.1" min="0" max="100" placeholder="Ex: 42" className="input" />
+                    <label className="block text-xs font-medium text-text-muted mb-1.5">Desconto (R$)</label>
+                    <input name="desconto" value={form.desconto} onChange={handleChange} type="number" step="0.01" min="0" placeholder="0,00" className="input" />
                   </div>
                 </div>
                 {form.valorBruto && form.desconto && (
                   <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-2.5 text-sm">
                     <span className="text-text-muted">Empresa recebe</span>
                     <span className="font-semibold text-primary">
-                      {(parseFloat(form.valorBruto) * (1 - parseFloat(form.desconto) / 100)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                      {(parseFloat(form.valorBruto) - parseFloat(form.desconto)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                     </span>
                   </div>
                 )}
