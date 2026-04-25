@@ -174,11 +174,12 @@ export default function ReciboPage() {
               </div>
 
               {/* Assinatura */}
-              <div className="flex justify-end">
+              <div className="flex justify-end mt-16">
                 <div className="text-center">
-                  <div className="border-t border-gray-400 pt-3 w-64">
-                    <p className="text-sm font-semibold text-gray-800">Júliet Bertino</p>
-                    <p className="text-xs text-gray-500">Médica Veterinária</p>
+                  <img src="/assinatura.png" alt="Assinatura" style={{ height: 80, margin: "0 auto 4px", display: "block", objectFit: "contain" }} />
+                  <div className="border-t border-gray-400 pt-3 w-72">
+                    <p className="text-sm font-semibold text-gray-800">Camila Bentzen Barreto</p>
+                    <p className="text-xs text-gray-500">Médica Veterinária — CRMV-PE 5916</p>
                     <p className="text-xs text-[#8B1A1A] font-medium mt-0.5">IMAPET Diagnóstico Veterinário por Imagem</p>
                   </div>
                 </div>
