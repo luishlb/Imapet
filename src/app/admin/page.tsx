@@ -56,10 +56,9 @@ export default function AdminPage() {
   // estado para adicionar novos itens inline
   const [novoServico, setNovoServico] = useState("");
   const [novaFormaPagamento, setNovaFormaPagamento] = useState("");
-  const [novaClinica, setNovaClinica] = useState("");
   const [mostrarAddServico, setMostrarAddServico] = useState(false);
   const [mostrarAddPagamento, setMostrarAddPagamento] = useState(false);
-  const [mostrarAddClinica, setMostrarAddClinica] = useState(false);
+  const [mostrarSugestoesCli, setMostrarSugestoesCli] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -105,16 +104,12 @@ export default function AdminPage() {
   }
 
   async function adicionarClinica() {
-    const nome = novaClinica.trim();
+    const nome = form.clinica.trim();
     if (!nome) return;
     const { data } = await createClient()
       .from("clinicas").insert({ nome, email: null, whatsapp: null }).select("*").single();
-    if (data) {
-      setClinicas(prev => [...prev, data].sort((a, b) => a.nome.localeCompare(b.nome)));
-      setForm(f => ({ ...f, clinica: nome }));
-    }
-    setNovaClinica("");
-    setMostrarAddClinica(false);
+    if (data) setClinicas(prev => [...prev, data].sort((a, b) => a.nome.localeCompare(b.nome)));
+    setMostrarSugestoesCli(false);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -371,32 +366,40 @@ export default function AdminPage() {
                 {/* Clínica */}
                 <div>
                   <label className="block text-xs font-medium text-text-muted mb-1.5">Clínica</label>
-                  <div className="flex items-center gap-2">
-                    <input name="clinica" value={form.clinica} onChange={handleChange} placeholder="Nome da clínica" list="clinicas-list" className="input flex-1" />
-                    <datalist id="clinicas-list">
-                      {clinicas.map(c => <option key={c.id} value={c.nome} />)}
-                    </datalist>
-                    {mostrarAddClinica ? (
-                      <div className="flex items-center gap-1 shrink-0">
-                        <input
-                          value={novaClinica}
-                          onChange={e => setNovaClinica(e.target.value)}
-                          onKeyDown={e => e.key === "Enter" && (e.preventDefault(), adicionarClinica())}
-                          placeholder="Nome"
-                          autoFocus
-                          className="input text-sm w-32"
-                        />
-                        <button type="button" onClick={adicionarClinica}
-                          className="bg-primary text-white text-sm px-3 py-2 rounded-xl">✓</button>
-                        <button type="button" onClick={() => { setMostrarAddClinica(false); setNovaClinica(""); }}
-                          className="text-text-muted text-sm px-1">✕</button>
-                      </div>
-                    ) : (
-                      <button type="button" onClick={() => setMostrarAddClinica(true)}
-                        className="shrink-0 text-sm text-primary border border-primary rounded-xl px-3 py-2 hover:bg-primary hover:text-white transition-all">
-                        +
-                      </button>
-                    )}
+                  <div className="relative">
+                    <input
+                      name="clinica"
+                      value={form.clinica}
+                      onChange={e => { handleChange(e); setMostrarSugestoesCli(true); }}
+                      onFocus={() => setMostrarSugestoesCli(true)}
+                      onBlur={() => setTimeout(() => setMostrarSugestoesCli(false), 150)}
+                      placeholder="Digite ou escolha a clínica"
+                      autoComplete="off"
+                      className="input w-full"
+                    />
+                    {mostrarSugestoesCli && (() => {
+                      const termo = form.clinica.toLowerCase().trim();
+                      const filtradas = clinicas.filter(c => !termo || c.nome.toLowerCase().includes(termo));
+                      const exataExiste = clinicas.some(c => c.nome.toLowerCase() === termo);
+                      if (filtradas.length === 0 && exataExiste) return null;
+                      return (
+                        <div className="absolute top-full left-0 right-0 z-20 bg-white border border-gray-200 rounded-xl shadow-lg mt-1 max-h-52 overflow-y-auto">
+                          {filtradas.map(c => (
+                            <button key={c.id} type="button"
+                              onMouseDown={() => { setForm(f => ({ ...f, clinica: c.nome })); setMostrarSugestoesCli(false); }}
+                              className="w-full text-left px-4 py-2.5 text-sm text-text-main hover:bg-gray-50 border-b border-gray-50 last:border-0">
+                              {c.nome}
+                            </button>
+                          ))}
+                          {form.clinica.trim() && !exataExiste && (
+                            <button type="button" onMouseDown={adicionarClinica}
+                              className="w-full text-left px-4 py-2.5 text-sm text-primary font-medium hover:bg-primary/5 border-t border-gray-100">
+                              + Salvar &ldquo;{form.clinica.trim()}&rdquo; como nova clínica
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 
