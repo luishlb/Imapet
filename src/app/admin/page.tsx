@@ -7,12 +7,25 @@ import { createClient } from "@/lib/supabase/client";
 
 type Clinica = { id: string; nome: string; email: string | null; whatsapp: string | null };
 
+const SERVICOS = [
+  "USG abdominal",
+  "USG geral / Ultrassonografia",
+  "USG encefálica",
+  "USG de face",
+  "USG de cabeça",
+  "Cistocentese",
+  "Abdominocentese",
+  "Eletrocardiograma",
+  "Drenagem",
+  "Outro",
+];
+
 type DadosEnvio = {
   nomeTutor: string;
   emailTutor: string;
   whatsappTutor: string;
   nomePet: string;
-  tipoExame: string;
+  tiposExame: string[];
   dataExame: string;
   laudoUrl: string;
 };
@@ -44,10 +57,15 @@ export default function AdminPage() {
   const [form, setForm] = useState({
     nomeTutor: "", cpf: "", emailTutor: "", whatsappTutor: "",
     nomePet: "", especie: "Cão", raca: "",
-    tipoExame: "Ultrassonografia", dataExame: new Date().toISOString().split("T")[0],
+    dataExame: new Date().toISOString().split("T")[0],
     clinica: "", formaPagamento: "Pix", valorBruto: "", valor: "", observacoes: "",
   });
+  const [tiposExame, setTiposExame] = useState<string[]>([]);
   const [arquivo, setArquivo] = useState<File | null>(null);
+
+  function toggleServico(s: string) {
+    setTiposExame(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
+  }
 
   useEffect(() => {
     createClient().from("clinicas").select("*").order("nome")
@@ -129,7 +147,7 @@ export default function AdminPage() {
 
       // Registra exame
       const { error: erroExame } = await supabase.from("exames").insert({
-        pet_id: petId, tipo: form.tipoExame, data_exame: form.dataExame,
+        pet_id: petId, tipo: tiposExame.join(", ") || null, data_exame: form.dataExame,
         clinica: form.clinica, forma_pagamento: form.formaPagamento,
         valor_bruto: form.valorBruto ? parseFloat(form.valorBruto) : null,
         valor: form.valor ? parseFloat(form.valor) : null,
@@ -141,7 +159,7 @@ export default function AdminPage() {
       setDadosEnvio({
         nomeTutor: form.nomeTutor,
         emailTutor: form.emailTutor, whatsappTutor: form.whatsappTutor,
-        nomePet: form.nomePet, tipoExame: form.tipoExame,
+        nomePet: form.nomePet, tiposExame,
         dataExame: form.dataExame, laudoUrl,
       });
       setEtapa("envio");
@@ -188,9 +206,10 @@ export default function AdminPage() {
     setForm({
       nomeTutor: "", cpf: "", emailTutor: "", whatsappTutor: "",
       nomePet: "", especie: "Cão", raca: "",
-      tipoExame: "Ultrassonografia", dataExame: new Date().toISOString().split("T")[0],
+      dataExame: new Date().toISOString().split("T")[0],
       clinica: "", formaPagamento: "Pix", valorBruto: "", valor: "", observacoes: "",
     });
+    setTiposExame([]);
     setArquivo(null);
     setDadosEnvio(null);
     setEmailOutra("");
@@ -269,18 +288,29 @@ export default function AdminPage() {
               {/* Exame */}
               <div className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
                 <h2 className="font-semibold text-text-main">Dados do exame</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-text-muted mb-1.5">Tipo de exame</label>
-                    <select name="tipoExame" value={form.tipoExame} onChange={handleChange} className="input">
-                      <option>Ultrassonografia</option>
-                      <option>Cistocentese</option>
-                    </select>
+                <div>
+                  <label className="block text-xs font-medium text-text-muted mb-2">
+                    Serviços <span className="text-gray-300 font-normal">(selecione um ou mais)</span>
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {SERVICOS.map(s => (
+                      <button key={s} type="button" onClick={() => toggleServico(s)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                          tiposExame.includes(s)
+                            ? "bg-primary text-white border-primary"
+                            : "bg-white text-text-muted border-gray-200 hover:border-primary hover:text-primary"
+                        }`}>
+                        {s}
+                      </button>
+                    ))}
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-text-muted mb-1.5">Data do exame</label>
-                    <input name="dataExame" value={form.dataExame} onChange={handleChange} type="date" required className="input" />
-                  </div>
+                  {tiposExame.length === 0 && (
+                    <p className="text-xs text-red-400 mt-1">Selecione ao menos um serviço</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-text-muted mb-1.5">Data do exame</label>
+                  <input name="dataExame" value={form.dataExame} onChange={handleChange} type="date" required className="input" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-text-muted mb-1.5">Clínica</label>
@@ -337,7 +367,7 @@ export default function AdminPage() {
 
               {erro && <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl">{erro}</p>}
 
-              <button type="submit" disabled={carregando}
+              <button type="submit" disabled={carregando || tiposExame.length === 0}
                 className="w-full bg-primary hover:bg-primary-light text-white font-semibold py-4 rounded-xl transition-all duration-300 disabled:opacity-60">
                 {carregando ? "Registrando..." : "Registrar exame"}
               </button>
@@ -352,7 +382,7 @@ export default function AdminPage() {
               <span className="text-2xl">✓</span>
               <div>
                 <p className="font-semibold text-green-800">Exame registrado com sucesso!</p>
-                <p className="text-sm text-green-700">{dadosEnvio.nomePet} · {dadosEnvio.tipoExame} · {formatarData(dadosEnvio.dataExame)}</p>
+                <p className="text-sm text-green-700">{dadosEnvio.nomePet} · {dadosEnvio.tiposExame.join(", ")} · {formatarData(dadosEnvio.dataExame)}</p>
               </div>
             </div>
 
