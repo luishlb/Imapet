@@ -272,6 +272,7 @@ export default function AdminPage() {
         <span className="text-sm text-text-muted font-medium">Painel da Veterinária</span>
         <div className="flex items-center gap-2">
           <Link href="/admin/recibo" className="text-sm font-medium px-4 py-2 rounded-xl border border-gray-200 text-text-muted hover:border-primary hover:text-primary transition-colors">Gerar recibo</Link>
+          <Link href="/admin/despesas" className="text-sm font-medium px-4 py-2 rounded-xl border border-gray-200 text-text-muted hover:border-primary hover:text-primary transition-colors">Despesas</Link>
           <Link href="/admin/financeiro" className="text-sm font-medium px-4 py-2 rounded-xl border border-gray-200 text-text-muted hover:border-primary hover:text-primary transition-colors">Ver financeiro</Link>
         </div>
       </header>
