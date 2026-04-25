@@ -53,7 +53,7 @@ async function fetchTodos(): Promise<Exame[]> {
       .order("id", { ascending: false })
       .range(from, from + PAGE - 1);
     if (!data || data.length === 0) break;
-    todos = todos.concat(data as Exame[]);
+    todos = todos.concat(data as unknown as Exame[]);
     if (data.length < PAGE) break;
     from += PAGE;
   }
