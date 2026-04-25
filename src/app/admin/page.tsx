@@ -460,8 +460,8 @@ export default function AdminPage() {
                           <p className="font-semibold text-text-main">{bruto.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-text-muted mb-0.5">Empresa</p>
-                          <p className="font-semibold text-primary">{(bruto * 0.58).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
+                          <p className="text-xs text-text-muted mb-0.5">Veterinária (com adicional) 42%</p>
+                          <p className="font-semibold text-primary">{(bruto * 0.42).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
                         </div>
                       </div>
                     );
