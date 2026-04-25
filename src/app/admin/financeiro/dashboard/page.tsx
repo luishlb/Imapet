@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -55,34 +55,93 @@ async function fetchTodos(): Promise<Exame[]> {
 
 // ─── SVG Area Chart ────────────────────────────────────────────────────────────
 function AreaChart({ data }: { data: { label: string; total: number }[] }) {
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+
   if (data.length === 0) return null;
-  const W = 800; const H = 140; const PB = 20; const PT = 8;
+
+  const PL = 60; const PR = 8; const PT = 12; const PB = 22;
+  const VW = 800; const VH = 170;
+  const CW = VW - PL - PR; const CH = VH - PT - PB;
+
   const max = Math.max(...data.map(d => d.total), 1);
+  const yTicks = [0, 0.25, 0.5, 0.75, 1];
+
   const pts = data.map((d, i) => ({
-    x: data.length === 1 ? W / 2 : (i / (data.length - 1)) * W,
-    y: PT + (1 - d.total / max) * (H - PB - PT),
+    x: PL + (data.length === 1 ? CW / 2 : (i / (data.length - 1)) * CW),
+    y: PT + (1 - d.total / max) * CH,
     label: d.label,
     total: d.total,
   }));
+
   const line = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
-  const area = `${line} L ${pts[pts.length - 1].x.toFixed(1)} ${H - PB} L ${pts[0].x.toFixed(1)} ${H - PB} Z`;
+  const area = `${line} L ${pts[pts.length - 1].x.toFixed(1)} ${PT + CH} L ${pts[0].x.toFixed(1)} ${PT + CH} Z`;
   const step = Math.max(1, Math.ceil(data.length / 10));
+
+  function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
+    if (!svgRef.current) return;
+    const rect = svgRef.current.getBoundingClientRect();
+    const mouseX = ((e.clientX - rect.left) / rect.width) * VW;
+    let nearest = 0; let minDist = Infinity;
+    pts.forEach((p, i) => { const d = Math.abs(p.x - mouseX); if (d < minDist) { minDist = d; nearest = i; } });
+    setHoverIdx(nearest);
+  }
+
+  const hp = hoverIdx !== null ? pts[hoverIdx] : null;
+
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 140 }}>
+    <svg ref={svgRef} viewBox={`0 0 ${VW} ${VH}`} className="w-full" style={{ height: 170 }}
+      onMouseMove={handleMouseMove} onMouseLeave={() => setHoverIdx(null)}>
       <defs>
         <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#8B1A1A" stopOpacity="0.18" />
           <stop offset="100%" stopColor="#8B1A1A" stopOpacity="0" />
         </linearGradient>
       </defs>
+
+      {/* Y-axis grid + labels */}
+      {yTicks.map(f => {
+        const y = PT + (1 - f) * CH;
+        const val = max * f;
+        const label = val >= 1000 ? `R$${(val / 1000).toFixed(1)}k` : `R$${val.toFixed(0)}`;
+        return (
+          <g key={f}>
+            <line x1={PL} y1={y} x2={VW - PR} y2={y} stroke="#f3f4f6" strokeWidth="1" />
+            <text x={PL - 5} y={y + 3.5} textAnchor="end" fontSize="8.5" fill="#9CA3AF">{label}</text>
+          </g>
+        );
+      })}
+
       <path d={area} fill="url(#grad)" />
       <path d={line} fill="none" stroke="#8B1A1A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+
+      {/* X labels */}
       {pts.filter((_, i) => i % step === 0 || i === pts.length - 1).map((p, i) => (
-        <text key={i} x={p.x} y={H} textAnchor="middle" fontSize="9" fill="#9CA3AF">{p.label}</text>
+        <text key={i} x={p.x} y={VH - 2} textAnchor="middle" fontSize="9" fill="#9CA3AF">{p.label}</text>
       ))}
+
+      {/* Dots */}
       {data.length <= 40 && pts.map((p, i) => (
-        <circle key={i} cx={p.x} cy={p.y} r="2.5" fill="#8B1A1A" />
+        <circle key={i} cx={p.x} cy={p.y} r={hoverIdx === i ? 4.5 : 2.5} fill="#8B1A1A"
+          opacity={hoverIdx !== null && hoverIdx !== i ? 0.3 : 1} />
       ))}
+
+      {/* Hover: linha vertical + tooltip */}
+      {hp && (() => {
+        const tw = 100; const th = 36;
+        const tx = Math.min(Math.max(hp.x - tw / 2, PL), VW - PR - tw);
+        const ty = Math.max(hp.y - th - 10, PT);
+        return (
+          <g>
+            <line x1={hp.x} y1={PT} x2={hp.x} y2={PT + CH} stroke="#8B1A1A" strokeWidth="1" strokeDasharray="3 3" opacity="0.4" />
+            <rect x={tx} y={ty} width={tw} height={th} rx="5" fill="#1C1C1E" />
+            <text x={tx + tw / 2} y={ty + 13} textAnchor="middle" fontSize="8.5" fill="#9CA3AF">{hp.label}</text>
+            <text x={tx + tw / 2} y={ty + 28} textAnchor="middle" fontSize="11" fontWeight="bold" fill="white">
+              {hp.total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+            </text>
+          </g>
+        );
+      })()}
     </svg>
   );
 }
