@@ -48,7 +48,7 @@ export default function AdminPage() {
     nomeTutor: "", cpf: "", emailTutor: "", whatsappTutor: "",
     nomePet: "", especie: "Cão", raca: "",
     dataExame: new Date().toISOString().split("T")[0],
-    clinica: "", formaPagamento: "", valorBruto: "", valor: "", observacoes: "",
+    clinica: "", formaPagamento: "", valorBruto: "", desconto: "", observacoes: "",
   });
   const [tiposExame, setTiposExame] = useState<string[]>([]);
   const [arquivo, setArquivo] = useState<File | null>(null);
@@ -174,11 +174,15 @@ export default function AdminPage() {
         laudoUrl = urlData.publicUrl;
       }
 
+      const vBruto = form.valorBruto ? parseFloat(form.valorBruto) : null;
+      const pct = form.desconto ? parseFloat(form.desconto) : null;
+      const vLiq = vBruto !== null && pct !== null ? parseFloat((vBruto * (1 - pct / 100)).toFixed(2)) : null;
+
       const { error: erroExame } = await supabase.from("exames").insert({
         pet_id: petId, tipo: tiposExame.join(", ") || null, data_exame: form.dataExame,
         clinica: form.clinica, forma_pagamento: form.formaPagamento,
-        valor_bruto: form.valorBruto ? parseFloat(form.valorBruto) : null,
-        valor: form.valor ? parseFloat(form.valor) : null,
+        valor_bruto: vBruto,
+        valor: vLiq,
         observacoes: form.observacoes, laudo_url: laudoUrl,
         nome_paciente: form.nomePet || null,
       });
@@ -232,7 +236,7 @@ export default function AdminPage() {
       nomeTutor: "", cpf: "", emailTutor: "", whatsappTutor: "",
       nomePet: "", especie: "Cão", raca: "",
       dataExame: new Date().toISOString().split("T")[0],
-      clinica: "", formaPagamento: formasPagamento[0] || "", valorBruto: "", valor: "", observacoes: "",
+      clinica: "", formaPagamento: formasPagamento[0] || "", valorBruto: "", desconto: "", observacoes: "",
     });
     setTiposExame([]);
     setArquivo(null);
@@ -435,18 +439,24 @@ export default function AdminPage() {
                 </div>
 
                 {/* Valores */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-text-muted mb-1.5">
-                      Valor cobrado <span className="text-gray-300 font-normal">(bruto, opcional)</span>
-                    </label>
+                    <label className="block text-xs font-medium text-text-muted mb-1.5">Valor (R$)</label>
                     <input name="valorBruto" value={form.valorBruto} onChange={handleChange} type="number" step="0.01" min="0" placeholder="0,00" className="input" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-text-muted mb-1.5">Valor líquido (R$)</label>
-                    <input name="valor" value={form.valor} onChange={handleChange} type="number" step="0.01" min="0" placeholder="0,00" className="input" />
+                    <label className="block text-xs font-medium text-text-muted mb-1.5">Desconto (%)</label>
+                    <input name="desconto" value={form.desconto} onChange={handleChange} type="number" step="0.1" min="0" max="100" placeholder="Ex: 42" className="input" />
                   </div>
                 </div>
+                {form.valorBruto && form.desconto && (
+                  <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-2.5 text-sm">
+                    <span className="text-text-muted">Empresa recebe</span>
+                    <span className="font-semibold text-primary">
+                      {(parseFloat(form.valorBruto) * (1 - parseFloat(form.desconto) / 100)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    </span>
+                  </div>
+                )}
 
                 {/* Observações */}
                 <div>
