@@ -48,7 +48,7 @@ export default function AdminPage() {
     nomeTutor: "", cpf: "", emailTutor: "", whatsappTutor: "",
     nomePet: "", especie: "Cão", raca: "",
     dataExame: new Date().toISOString().split("T")[0],
-    clinica: "", formaPagamento: "", preco: "", desconto: "", repasse: "42", observacoes: "",
+    clinica: "", formaPagamento: "", preco: "", desconto: "", observacoes: "",
   });
   const [tiposExame, setTiposExame] = useState<string[]>([]);
   const [arquivo, setArquivo] = useState<File | null>(null);
@@ -177,8 +177,7 @@ export default function AdminPage() {
       const preco = form.preco ? parseFloat(form.preco) : null;
       const desc = form.desconto ? parseFloat(form.desconto) : 0;
       const vBruto = preco !== null ? parseFloat((preco - desc).toFixed(2)) : null;
-      const repasse = form.repasse ? parseFloat(form.repasse) : 42;
-      const vLiq = vBruto !== null ? parseFloat((vBruto * (1 - repasse / 100)).toFixed(2)) : null;
+      const vLiq = vBruto !== null ? parseFloat((vBruto * 0.58).toFixed(2)) : null;
 
       const { error: erroExame } = await supabase.from("exames").insert({
         pet_id: petId, tipo: tiposExame.join(", ") || null, data_exame: form.dataExame,
@@ -238,7 +237,7 @@ export default function AdminPage() {
       nomeTutor: "", cpf: "", emailTutor: "", whatsappTutor: "",
       nomePet: "", especie: "Cão", raca: "",
       dataExame: new Date().toISOString().split("T")[0],
-      clinica: "", formaPagamento: formasPagamento[0] || "", preco: "", desconto: "", repasse: "42", observacoes: "",
+      clinica: "", formaPagamento: formasPagamento[0] || "", preco: "", desconto: "", observacoes: "",
     });
     setTiposExame([]);
     setArquivo(null);
@@ -451,40 +450,18 @@ export default function AdminPage() {
                     <input name="desconto" value={form.desconto} onChange={handleChange} type="number" step="0.01" min="0" placeholder="0,00" className="input" />
                   </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-text-muted mb-2">Repasse da veterinária</label>
-                  <div className="flex gap-2">
-                    {["30", "42"].map(p => (
-                      <button key={p} type="button" onClick={() => setForm(f => ({ ...f, repasse: p }))}
-                        className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all ${form.repasse === p ? "bg-primary text-white border-primary" : "bg-white text-text-muted border-gray-200 hover:border-primary hover:text-primary"}`}>
-                        {p}%
-                      </button>
-                    ))}
-                    <input name="repasse" value={!["30","42"].includes(form.repasse) ? form.repasse : ""} onChange={handleChange}
-                      type="number" step="1" min="0" max="100" placeholder="Outro %"
-                      className="input text-sm w-28" />
-                  </div>
-                </div>
                 {form.preco && (
                   (() => {
-                    const preco = parseFloat(form.preco);
-                    const desc = parseFloat(form.desconto || "0");
-                    const rep = parseFloat(form.repasse || "42");
-                    const bruto = preco - desc;
-                    const empresa = bruto * (1 - rep / 100);
+                    const bruto = parseFloat(form.preco) - parseFloat(form.desconto || "0");
                     return (
-                      <div className="bg-gray-50 rounded-xl px-4 py-3 grid grid-cols-3 gap-2 text-sm text-center">
+                      <div className="bg-gray-50 rounded-xl px-4 py-3 grid grid-cols-2 gap-2 text-sm text-center">
                         <div>
                           <p className="text-xs text-text-muted mb-0.5">Cobrado</p>
                           <p className="font-semibold text-text-main">{bruto.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-text-muted mb-0.5">Vet. {form.repasse}%</p>
-                          <p className="font-semibold text-text-muted">{(bruto * rep / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
-                        </div>
-                        <div>
                           <p className="text-xs text-text-muted mb-0.5">Empresa</p>
-                          <p className="font-semibold text-primary">{empresa.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
+                          <p className="font-semibold text-primary">{(bruto * 0.58).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
                         </div>
                       </div>
                     );

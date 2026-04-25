@@ -157,7 +157,6 @@ export default function FinanceiroPage() {
                       <th className="text-left px-2 py-3">Serviço</th>
                       <th className="text-left px-2 py-3">Pgto.</th>
                       <th className="text-right px-2 py-3">Bruto</th>
-                      <th className="text-right px-2 py-3">Vet. 30%</th>
                       <th className="text-right px-2 py-3">Vet. 42%</th>
                       <th className="text-right px-2 py-3">Empresa</th>
                     </tr>
@@ -171,7 +170,6 @@ export default function FinanceiroPage() {
                         <td className="px-2 py-2 text-text-muted">{e.tipo || "—"}</td>
                         <td className="px-2 py-2 text-text-muted">{normalizarPagamento(e.forma_pagamento)}</td>
                         <td className="px-2 py-2 text-right text-text-muted">{e.valor_bruto ? moeda(e.valor_bruto) : "—"}</td>
-                        <td className="px-2 py-2 text-right text-text-muted">{e.valor_bruto ? moeda(e.valor_bruto * 0.30) : "—"}</td>
                         <td className="px-2 py-2 text-right text-text-muted">{e.valor_bruto ? moeda(e.valor_bruto * 0.42) : "—"}</td>
                         <td className="px-2 py-2 text-right font-semibold text-primary">{e.valor ? moeda(e.valor) : "—"}</td>
                       </tr>
