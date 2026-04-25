@@ -173,7 +173,7 @@ export default function DashboardPage() {
   const [exames, setExames] = useState<Exame[]>([]);
   const [carregando, setCarregando] = useState(true);
 
-  const [modo, setModo] = useState<"mensal" | "periodo">("mensal");
+  const [modo, setModo] = useState<"mes_atual" | "mensal" | "periodo">("mes_atual");
   const [mesSel, setMesSel] = useState(HOJE.getMonth() + 1);
   const [anoSel, setAnoSel] = useState(HOJE.getFullYear());
   const [dataInicio, setDataInicio] = useState(PRIMEIRO_DIA_MES);
@@ -197,6 +197,7 @@ export default function DashboardPage() {
   const filtrados = useMemo(() =>
     exames.filter(e => {
       const d = new Date(e.data_exame + "T12:00:00");
+      if (modo === "mes_atual") return e.data_exame >= PRIMEIRO_DIA_MES && e.data_exame <= HOJE_STR;
       if (modo === "mensal") return d.getMonth() + 1 === mesSel && d.getFullYear() === anoSel;
       return e.data_exame >= dataInicioAplicada && e.data_exame <= dataFimAplicada;
     }), [exames, modo, mesSel, anoSel, dataInicioAplicada, dataFimAplicada]);
@@ -216,6 +217,14 @@ export default function DashboardPage() {
   // ── Evolução ──
   const evolucao = useMemo(() => {
     if (filtrados.length === 0) return [];
+    if (modo === "mes_atual") {
+      const map: Record<number, number> = {};
+      filtrados.forEach(e => {
+        const dia = parseInt(e.data_exame.split("-")[2]);
+        map[dia] = (map[dia] || 0) + (e.valor_bruto ?? e.valor ?? 0);
+      });
+      return Array.from({ length: HOJE.getDate() }, (_, i) => ({ label: String(i + 1), total: map[i + 1] || 0 }));
+    }
     if (modo === "mensal") {
       const daysInMonth = new Date(anoSel, mesSel, 0).getDate();
       const map: Record<number, number> = {};
@@ -303,7 +312,13 @@ export default function DashboardPage() {
   const crescimento = useMemo(() => {
     if (filtrados.length === 0) return null;
     let prevIni: string, prevFim: string;
-    if (modo === "mensal") {
+    if (modo === "mes_atual") {
+      const pm = HOJE.getMonth() === 0 ? 12 : HOJE.getMonth();
+      const py = HOJE.getMonth() === 0 ? HOJE.getFullYear() - 1 : HOJE.getFullYear();
+      const dayNum = Math.min(HOJE.getDate(), new Date(py, pm, 0).getDate());
+      prevIni = `${py}-${String(pm).padStart(2, "0")}-01`;
+      prevFim = `${py}-${String(pm).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
+    } else if (modo === "mensal") {
       const d = new Date(anoSel, mesSel - 2, 1);
       const lastDay = new Date(anoSel, mesSel - 1, 0).getDate();
       prevIni = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
@@ -323,11 +338,14 @@ export default function DashboardPage() {
   }, [exames, filtrados, modo, mesSel, anoSel, dataInicioAplicada, dataFimAplicada, totalBruto]);
 
   // ── Labels ──
-  const labelPeriodo = modo === "mensal"
+  const labelPeriodo = modo === "mes_atual"
+    ? `${MESES[HOJE.getMonth()]} ${HOJE.getFullYear()} — até hoje (dia ${HOJE.getDate()})`
+    : modo === "mensal"
     ? `${MESES[mesSel - 1]} ${anoSel}`
     : `${dataInicioAplicada.split("-").reverse().join("/")} a ${dataFimAplicada.split("-").reverse().join("/")}`;
 
   const diasNoPeriodo = useMemo(() => {
+    if (modo === "mes_atual") return HOJE.getDate();
     if (modo === "mensal") return new Date(anoSel, mesSel, 0).getDate();
     return Math.ceil((new Date(dataFimAplicada).getTime() - new Date(dataInicioAplicada).getTime()) / 86400000) + 1;
   }, [modo, mesSel, anoSel, dataInicioAplicada, dataFimAplicada]);
@@ -367,6 +385,7 @@ export default function DashboardPage() {
         {/* Filtro */}
         <div className="bg-white rounded-2xl p-4 shadow-sm mb-8 flex flex-col sm:flex-row sm:items-center gap-4">
           <div className="flex rounded-xl overflow-hidden border border-gray-200 shrink-0">
+            <button onClick={() => setModo("mes_atual")} className={`px-4 py-2 text-sm font-medium transition-colors ${modo === "mes_atual" ? "bg-primary text-white" : "bg-white text-text-muted hover:bg-gray-50"}`}>Mês atual</button>
             <button onClick={() => setModo("mensal")} className={`px-4 py-2 text-sm font-medium transition-colors ${modo === "mensal" ? "bg-primary text-white" : "bg-white text-text-muted hover:bg-gray-50"}`}>Mensal</button>
             <button onClick={() => setModo("periodo")} className={`px-4 py-2 text-sm font-medium transition-colors ${modo === "periodo" ? "bg-primary text-white" : "bg-white text-text-muted hover:bg-gray-50"}`}>Por período</button>
           </div>
