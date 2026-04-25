@@ -48,7 +48,7 @@ export default function AdminPage() {
     nomeTutor: "", cpf: "", emailTutor: "", whatsappTutor: "",
     nomePet: "", especie: "Cão", raca: "",
     dataExame: new Date().toISOString().split("T")[0],
-    clinica: "", formaPagamento: "", valorBruto: "", desconto: "", observacoes: "",
+    clinica: "", formaPagamento: "", preco: "", desconto: "", repasse: "42", observacoes: "",
   });
   const [tiposExame, setTiposExame] = useState<string[]>([]);
   const [arquivo, setArquivo] = useState<File | null>(null);
@@ -174,9 +174,11 @@ export default function AdminPage() {
         laudoUrl = urlData.publicUrl;
       }
 
-      const vBruto = form.valorBruto ? parseFloat(form.valorBruto) : null;
-      const desc = form.desconto ? parseFloat(form.desconto) : null;
-      const vLiq = vBruto !== null && desc !== null ? parseFloat((vBruto - desc).toFixed(2)) : null;
+      const preco = form.preco ? parseFloat(form.preco) : null;
+      const desc = form.desconto ? parseFloat(form.desconto) : 0;
+      const vBruto = preco !== null ? parseFloat((preco - desc).toFixed(2)) : null;
+      const repasse = form.repasse ? parseFloat(form.repasse) : 42;
+      const vLiq = vBruto !== null ? parseFloat((vBruto * (1 - repasse / 100)).toFixed(2)) : null;
 
       const { error: erroExame } = await supabase.from("exames").insert({
         pet_id: petId, tipo: tiposExame.join(", ") || null, data_exame: form.dataExame,
@@ -236,7 +238,7 @@ export default function AdminPage() {
       nomeTutor: "", cpf: "", emailTutor: "", whatsappTutor: "",
       nomePet: "", especie: "Cão", raca: "",
       dataExame: new Date().toISOString().split("T")[0],
-      clinica: "", formaPagamento: formasPagamento[0] || "", valorBruto: "", desconto: "", observacoes: "",
+      clinica: "", formaPagamento: formasPagamento[0] || "", preco: "", desconto: "", repasse: "42", observacoes: "",
     });
     setTiposExame([]);
     setArquivo(null);
@@ -441,21 +443,52 @@ export default function AdminPage() {
                 {/* Valores */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-text-muted mb-1.5">Valor (R$)</label>
-                    <input name="valorBruto" value={form.valorBruto} onChange={handleChange} type="number" step="0.01" min="0" placeholder="0,00" className="input" />
+                    <label className="block text-xs font-medium text-text-muted mb-1.5">Valor do exame (R$)</label>
+                    <input name="preco" value={form.preco} onChange={handleChange} type="number" step="0.01" min="0" placeholder="0,00" className="input" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-text-muted mb-1.5">Desconto (R$)</label>
+                    <label className="block text-xs font-medium text-text-muted mb-1.5">Desconto ao cliente (R$)</label>
                     <input name="desconto" value={form.desconto} onChange={handleChange} type="number" step="0.01" min="0" placeholder="0,00" className="input" />
                   </div>
                 </div>
-                {form.valorBruto && form.desconto && (
-                  <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-2.5 text-sm">
-                    <span className="text-text-muted">Empresa recebe</span>
-                    <span className="font-semibold text-primary">
-                      {(parseFloat(form.valorBruto) - parseFloat(form.desconto)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                    </span>
+                <div>
+                  <label className="block text-xs font-medium text-text-muted mb-2">Repasse da veterinária</label>
+                  <div className="flex gap-2">
+                    {["30", "42"].map(p => (
+                      <button key={p} type="button" onClick={() => setForm(f => ({ ...f, repasse: p }))}
+                        className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all ${form.repasse === p ? "bg-primary text-white border-primary" : "bg-white text-text-muted border-gray-200 hover:border-primary hover:text-primary"}`}>
+                        {p}%
+                      </button>
+                    ))}
+                    <input name="repasse" value={!["30","42"].includes(form.repasse) ? form.repasse : ""} onChange={handleChange}
+                      type="number" step="1" min="0" max="100" placeholder="Outro %"
+                      className="input text-sm w-28" />
                   </div>
+                </div>
+                {form.preco && (
+                  (() => {
+                    const preco = parseFloat(form.preco);
+                    const desc = parseFloat(form.desconto || "0");
+                    const rep = parseFloat(form.repasse || "42");
+                    const bruto = preco - desc;
+                    const empresa = bruto * (1 - rep / 100);
+                    return (
+                      <div className="bg-gray-50 rounded-xl px-4 py-3 grid grid-cols-3 gap-2 text-sm text-center">
+                        <div>
+                          <p className="text-xs text-text-muted mb-0.5">Cobrado</p>
+                          <p className="font-semibold text-text-main">{bruto.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-text-muted mb-0.5">Vet. {form.repasse}%</p>
+                          <p className="font-semibold text-text-muted">{(bruto * rep / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-text-muted mb-0.5">Empresa</p>
+                          <p className="font-semibold text-primary">{empresa.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
+                        </div>
+                      </div>
+                    );
+                  })()
                 )}
 
                 {/* Observações */}
