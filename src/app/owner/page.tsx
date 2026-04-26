@@ -20,7 +20,28 @@ type Exame = {
   pets: { nome: string } | null;
 };
 
+const HOJE_STR = HOJE.toISOString().split("T")[0];
+const PRIMEIRO_DIA_MES = `${HOJE.getFullYear()}-${String(HOJE.getMonth() + 1).padStart(2, "0")}-01`;
 const anos = [2024, 2025, 2026, 2027];
+
+async function fetchTodos(): Promise<Exame[]> {
+  const supabase = createClient();
+  const PAGE = 1000;
+  let todos: Exame[] = [];
+  let from = 0;
+  while (true) {
+    const { data } = await supabase
+      .from("exames")
+      .select("id, data_exame, tipo, clinica, forma_pagamento, valor_bruto, nome_paciente, pets(nome)")
+      .order("data_exame", { ascending: false })
+      .range(from, from + PAGE - 1);
+    if (!data || data.length === 0) break;
+    todos = todos.concat(data as unknown as Exame[]);
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+  return todos;
+}
 
 export default function OwnerPage() {
   const [autenticado, setAutenticado] = useState(false);
@@ -40,9 +61,59 @@ export default function OwnerPage() {
   const [mesRel, setMesRel] = useState(HOJE.getMonth() + 1);
   const [anoRel, setAnoRel] = useState(HOJE.getFullYear());
 
+  // Tabela de exames
+  const [todosExames, setTodosExames] = useState<Exame[]>([]);
+  const [carregandoTabela, setCarregandoTabela] = useState(true);
+  const [modoTabela, setModoTabela] = useState<"mensal" | "periodo">("mensal");
+  const [mesTabelaSel, setMesTabelaSel] = useState(HOJE.getMonth() + 1);
+  const [anoTabelaSel, setAnoTabelaSel] = useState(HOJE.getFullYear());
+  const [dataInicioTabela, setDataInicioTabela] = useState(PRIMEIRO_DIA_MES);
+  const [dataFimTabela, setDataFimTabela] = useState(HOJE_STR);
+  const [dataInicioAplicada, setDataInicioAplicada] = useState(PRIMEIRO_DIA_MES);
+  const [dataFimAplicada, setDataFimAplicada] = useState(HOJE_STR);
+  const [buscaTabela, setBuscaTabela] = useState("");
+  const [filtroClinicaTabela, setFiltroClinicaTabela] = useState("");
+
+  const filtradosPeriodoTabela = useMemo(() =>
+    todosExames.filter(e => {
+      const d = new Date(e.data_exame + "T12:00:00");
+      if (modoTabela === "mensal") return d.getMonth() + 1 === mesTabelaSel && d.getFullYear() === anoTabelaSel;
+      return e.data_exame >= dataInicioAplicada && e.data_exame <= dataFimAplicada;
+    }), [todosExames, modoTabela, mesTabelaSel, anoTabelaSel, dataInicioAplicada, dataFimAplicada]);
+
+  const clinicaOptionsTabela = useMemo(() => {
+    const set = new Set(filtradosPeriodoTabela.map(e => e.clinica).filter(Boolean));
+    return [...set].sort() as string[];
+  }, [filtradosPeriodoTabela]);
+
+  const filtradosTabela = useMemo(() => {
+    const q = buscaTabela.trim().toLowerCase();
+    return filtradosPeriodoTabela.filter(e => {
+      if (filtroClinicaTabela && e.clinica !== filtroClinicaTabela) return false;
+      if (!q) return true;
+      const paciente = (e.nome_paciente || e.pets?.nome || "").toLowerCase();
+      const clinica = (e.clinica || "").toLowerCase();
+      const tipo = (e.tipo || "").toLowerCase();
+      const data = dataFmt(e.data_exame);
+      return paciente.includes(q) || clinica.includes(q) || tipo.includes(q) || data.includes(q);
+    });
+  }, [filtradosPeriodoTabela, buscaTabela, filtroClinicaTabela]);
+
+  const anosTabela = useMemo(() => {
+    const set = new Set(todosExames.map(e => new Date(e.data_exame + "T12:00:00").getFullYear()));
+    set.add(HOJE.getFullYear());
+    return [...set].sort((a, b) => b - a);
+  }, [todosExames]);
+
   useEffect(() => {
     if (localStorage.getItem("owner_auth") === "1") setAutenticado(true);
   }, []);
+
+  useEffect(() => {
+    if (autenticado) {
+      fetchTodos().then(d => { setTodosExames(d); setCarregandoTabela(false); });
+    }
+  }, [autenticado]);
 
   function login() {
     if (senha === SENHA) {
@@ -62,7 +133,10 @@ export default function OwnerPage() {
     if (!window.confirm("Apagar este exame permanentemente?")) return;
     const supabase = createClient();
     const { error } = await supabase.from("exames").delete().eq("id", id);
-    if (!error) setExamesPgto(prev => prev.filter(e => e.id !== id));
+    if (!error) {
+      setExamesPgto(prev => prev.filter(e => e.id !== id));
+      setTodosExames(prev => prev.filter(e => e.id !== id));
+    }
   }
 
   async function calcular() {
@@ -274,6 +348,113 @@ export default function OwnerPage() {
               </button>
             </div>
           </div>
+        </div>
+
+        {/* ── TABELA DE EXAMES ── */}
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <div className="px-6 py-5 border-b border-gray-100">
+            <h2 className="font-playfair text-xl font-bold text-text-main">Todos os exames</h2>
+            <p className="text-xs text-text-muted mt-0.5">Busca, filtros e exclusão de registros</p>
+          </div>
+          <div className="px-6 py-5 space-y-3">
+
+            {/* Filtro de período */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex rounded-xl overflow-hidden border border-gray-200">
+                <button onClick={() => setModoTabela("mensal")} className={`px-4 py-2 text-sm font-medium transition-colors ${modoTabela === "mensal" ? "bg-primary text-white" : "bg-white text-text-muted hover:bg-gray-50"}`}>Mensal</button>
+                <button onClick={() => setModoTabela("periodo")} className={`px-4 py-2 text-sm font-medium transition-colors ${modoTabela === "periodo" ? "bg-primary text-white" : "bg-white text-text-muted hover:bg-gray-50"}`}>Período</button>
+              </div>
+              {modoTabela === "mensal" ? (
+                <>
+                  <select value={mesTabelaSel} onChange={e => setMesTabelaSel(Number(e.target.value))} className="input text-sm py-2">
+                    {MESES.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+                  </select>
+                  <select value={anoTabelaSel} onChange={e => setAnoTabelaSel(Number(e.target.value))} className="input text-sm py-2">
+                    {anosTabela.map(a => <option key={a} value={a}>{a}</option>)}
+                  </select>
+                </>
+              ) : (
+                <>
+                  <input type="date" value={dataInicioTabela} onChange={e => setDataInicioTabela(e.target.value)} className="input text-sm py-2" />
+                  <span className="text-sm text-text-muted">até</span>
+                  <input type="date" value={dataFimTabela} onChange={e => setDataFimTabela(e.target.value)} className="input text-sm py-2" />
+                  <button onClick={() => { setDataInicioAplicada(dataInicioTabela); setDataFimAplicada(dataFimTabela); }} className="bg-primary text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-primary-light transition">Aplicar</button>
+                </>
+              )}
+            </div>
+
+            {/* Busca + filtro clínica */}
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="text"
+                value={buscaTabela}
+                onChange={e => setBuscaTabela(e.target.value)}
+                placeholder="Buscar por paciente, clínica, serviço ou data..."
+                className="input text-sm flex-1"
+              />
+              {clinicaOptionsTabela.length > 1 && (
+                <select value={filtroClinicaTabela} onChange={e => setFiltroClinicaTabela(e.target.value)} className="input text-sm sm:w-44">
+                  <option value="">Clínica: todas</option>
+                  {clinicaOptionsTabela.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              )}
+              {(buscaTabela || filtroClinicaTabela) && (
+                <button onClick={() => { setBuscaTabela(""); setFiltroClinicaTabela(""); }} className="text-xs text-text-muted hover:text-red-500 transition-colors px-2">Limpar</button>
+              )}
+            </div>
+
+            {/* Contador */}
+            <p className="text-xs text-text-muted">
+              {(buscaTabela || filtroClinicaTabela) && filtradosTabela.length !== filtradosPeriodoTabela.length
+                ? `${filtradosTabela.length} de ${filtradosPeriodoTabela.length} exames`
+                : `${filtradosPeriodoTabela.length} exame${filtradosPeriodoTabela.length !== 1 ? "s" : ""}`}
+            </p>
+          </div>
+
+          {carregandoTabela ? (
+            <p className="text-sm text-text-muted px-6 pb-8">Carregando...</p>
+          ) : filtradosTabela.length === 0 ? (
+            <p className="text-sm text-text-muted px-6 pb-8">
+              {buscaTabela || filtroClinicaTabela ? "Nenhum exame encontrado para essa busca." : "Nenhum exame neste período."}
+            </p>
+          ) : (
+            <div className="overflow-x-auto border-t border-gray-100">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-[10px] text-text-muted uppercase tracking-wider bg-gray-50 border-b border-gray-100">
+                    <th className="text-left px-3 py-2.5 whitespace-nowrap">Data</th>
+                    <th className="text-left px-3 py-2.5">Paciente</th>
+                    <th className="text-left px-3 py-2.5">Clínica</th>
+                    <th className="text-left px-3 py-2.5">Serviço</th>
+                    <th className="text-left px-3 py-2.5">Pgto.</th>
+                    <th className="text-right px-3 py-2.5">Valor</th>
+                    <th className="px-3 py-2.5"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {filtradosTabela.map(e => (
+                    <tr key={e.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-3 py-2 text-text-muted whitespace-nowrap">{dataFmt(e.data_exame)}</td>
+                      <td className="px-3 py-2 font-medium text-text-main">{e.nome_paciente || e.pets?.nome || "—"}</td>
+                      <td className="px-3 py-2 text-text-muted">{e.clinica || "—"}</td>
+                      <td className="px-3 py-2 text-text-muted">{e.tipo || "—"}</td>
+                      <td className="px-3 py-2 text-text-muted">{e.forma_pagamento || "—"}</td>
+                      <td className="px-3 py-2 text-right text-text-muted">{e.valor_bruto ? moeda(e.valor_bruto) : "—"}</td>
+                      <td className="px-3 py-2 text-center">
+                        <button
+                          onClick={() => apagarExame(e.id)}
+                          className="text-gray-300 hover:text-red-500 transition-colors text-base leading-none"
+                          title="Apagar exame"
+                        >
+                          🗑
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
       </main>
