@@ -108,17 +108,17 @@ function RelatorioContent() {
           body { margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           @page { margin: 12mm 15mm; size: A4 portrait; }
         }
-        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: #fff; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: #f5f5f5; }
       `}</style>
 
-      <div className="no-print fixed top-4 right-4 z-50">
+      <div className="no-print" style={{ background: "#fff", borderBottom: "1px solid #e5e7eb", padding: "12px 24px", display: "flex", justifyContent: "flex-end", position: "sticky", top: 0, zIndex: 50 }}>
         <button onClick={() => window.print()}
-          className="bg-primary text-white font-semibold px-6 py-3 rounded-xl shadow-lg hover:bg-primary-light transition text-sm">
+          style={{ background: "#8B1A1A", color: "#fff", fontWeight: 600, padding: "10px 24px", borderRadius: 12, border: "none", cursor: "pointer", fontSize: 14, letterSpacing: "0.01em" }}>
           Salvar PDF
         </button>
       </div>
 
-      <div style={{ maxWidth: 780, margin: "0 auto", padding: "40px 48px", background: "#fff" }}>
+      <div style={{ maxWidth: 780, margin: "24px auto", padding: "40px 48px", background: "#fff" }}>
 
         {/* ── HEADER ── */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
