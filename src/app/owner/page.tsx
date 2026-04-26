@@ -9,6 +9,17 @@ const SENHA = process.env.NEXT_PUBLIC_OWNER_PASSWORD || "imapet2024";
 const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 const HOJE = new Date();
 
+const CATEGORIAS = ["Impostos", "Marketing", "Contabilidade", "Transporte", "Equipamento", "Seguros", "Outros"];
+
+type Despesa = {
+  id: string;
+  data: string;
+  descricao: string;
+  categoria: string;
+  valor: number;
+  comprovante_url: string | null;
+};
+
 type Exame = {
   id: string;
   data_exame: string;
@@ -75,6 +86,13 @@ export default function OwnerPage() {
   const [buscaTabela, setBuscaTabela] = useState("");
   const [filtroClinicaTabela, setFiltroClinicaTabela] = useState("");
 
+  // Despesas
+  const [despesas, setDespesas] = useState<Despesa[]>([]);
+  const [carregandoDespesas, setCarregandoDespesas] = useState(true);
+  const [salvandoDespesa, setSalvandoDespesa] = useState(false);
+  const [arquivoDespesa, setArquivoDespesa] = useState<File | null>(null);
+  const [formDespesa, setFormDespesa] = useState({ data: HOJE_STR, descricao: "", categoria: CATEGORIAS[0], valor: "" });
+
   // Resumo financeiro
   const [modoFin, setModoFin] = useState<"mes_atual" | "mensal">("mes_atual");
   const [mesFinSel, setMesFinSel] = useState(HOJE.getMonth() + 1);
@@ -130,6 +148,12 @@ export default function OwnerPage() {
   useEffect(() => {
     if (autenticado) {
       fetchTodos().then(d => { setTodosExames(d); setCarregandoTabela(false); });
+      createClient()
+        .from("despesas")
+        .select("*")
+        .order("data", { ascending: false })
+        .order("created_at", { ascending: false })
+        .then(({ data }) => { setDespesas(data || []); setCarregandoDespesas(false); });
     }
   }, [autenticado]);
 
@@ -145,6 +169,41 @@ export default function OwnerPage() {
   function logout() {
     localStorage.removeItem("owner_auth");
     setAutenticado(false);
+  }
+
+  async function handleDespesaSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!formDespesa.descricao || !formDespesa.valor || !formDespesa.data) return;
+    setSalvandoDespesa(true);
+    const supabase = createClient();
+    let comprovante_url: string | null = null;
+    if (arquivoDespesa) {
+      const ext = arquivoDespesa.name.split(".").pop();
+      const path = `comprovantes/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("laudos").upload(path, arquivoDespesa);
+      if (!upErr) {
+        const { data: urlData } = supabase.storage.from("laudos").getPublicUrl(path);
+        comprovante_url = urlData.publicUrl;
+      }
+    }
+    const { data } = await supabase
+      .from("despesas")
+      .insert({ data: formDespesa.data, descricao: formDespesa.descricao.trim(), categoria: formDespesa.categoria, valor: parseFloat(formDespesa.valor), comprovante_url })
+      .select("*").single();
+    if (data) {
+      setDespesas(prev => [data as Despesa, ...prev]);
+      setFormDespesa({ data: HOJE_STR, descricao: "", categoria: CATEGORIAS[0], valor: "" });
+      setArquivoDespesa(null);
+      const input = document.getElementById("comprovante-owner") as HTMLInputElement;
+      if (input) input.value = "";
+    }
+    setSalvandoDespesa(false);
+  }
+
+  async function apagarDespesa(id: string) {
+    if (!window.confirm("Apagar esta despesa permanentemente?")) return;
+    const { error } = await createClient().from("despesas").delete().eq("id", id);
+    if (!error) setDespesas(prev => prev.filter(d => d.id !== id));
   }
 
   async function apagarExame(id: string) {
@@ -382,6 +441,108 @@ export default function OwnerPage() {
                 <div className="rounded-xl border border-gray-100 p-4">
                   <p className="text-xs text-text-muted mb-1">Ticket médio</p>
                   <p className="font-playfair text-xl font-bold text-text-main">{filtradosFin.length > 0 ? moeda(ticketMedioFin) : "—"}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── DESPESAS ── */}
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <div className="px-6 py-5 border-b border-gray-100">
+            <h2 className="font-playfair text-xl font-bold text-text-main">Despesas</h2>
+            <p className="text-xs text-text-muted mt-0.5">Lançamento e histórico de gastos</p>
+          </div>
+          <div className="px-6 py-5">
+            <form onSubmit={handleDespesaSubmit} className="space-y-4 mb-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-text-muted mb-1.5">Data *</label>
+                  <input name="data" type="date" value={formDespesa.data}
+                    onChange={e => setFormDespesa(f => ({ ...f, data: e.target.value }))} className="input text-sm" />
+                </div>
+                <div className="col-span-1 sm:col-span-2">
+                  <label className="block text-xs font-medium text-text-muted mb-1.5">Categoria *</label>
+                  <select name="categoria" value={formDespesa.categoria}
+                    onChange={e => setFormDespesa(f => ({ ...f, categoria: e.target.value }))} className="input text-sm">
+                    {CATEGORIAS.map(c => <option key={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-text-muted mb-1.5">Valor (R$) *</label>
+                  <input name="valor" type="number" step="0.01" min="0" value={formDespesa.valor}
+                    onChange={e => setFormDespesa(f => ({ ...f, valor: e.target.value }))}
+                    placeholder="0,00" className="input text-sm" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-text-muted mb-1.5">Descrição *</label>
+                <input value={formDespesa.descricao}
+                  onChange={e => setFormDespesa(f => ({ ...f, descricao: e.target.value }))}
+                  placeholder="Ex: Publicação patrocinada no Instagram" className="input text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-text-muted mb-1.5">
+                  Comprovante <span className="text-gray-300 font-normal">(opcional)</span>
+                </label>
+                <input id="comprovante-owner" type="file" accept="image/*,application/pdf"
+                  onChange={e => setArquivoDespesa(e.target.files?.[0] || null)}
+                  className="block w-full text-sm text-text-muted file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer" />
+                {arquivoDespesa && <p className="text-xs text-text-muted mt-1.5">📎 {arquivoDespesa.name}</p>}
+              </div>
+              <button type="submit" disabled={salvandoDespesa || !formDespesa.descricao || !formDespesa.valor}
+                className="w-full bg-primary hover:bg-primary-light text-white font-semibold py-3 rounded-xl transition-all disabled:opacity-50">
+                {salvandoDespesa ? "Salvando..." : "Lançar despesa"}
+              </button>
+            </form>
+
+            {carregandoDespesas ? (
+              <p className="text-sm text-text-muted text-center py-4">Carregando...</p>
+            ) : despesas.length === 0 ? (
+              <p className="text-sm text-text-muted text-center py-4">Nenhuma despesa lançada ainda.</p>
+            ) : (
+              <div className="rounded-xl border border-gray-100 overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+                  <span className="text-xs font-medium text-text-muted uppercase tracking-wider">
+                    Histórico ({despesas.length})
+                  </span>
+                  <span className="text-sm text-text-muted">
+                    Total: <strong className="text-red-500">{moeda(despesas.reduce((s, d) => s + d.valor, 0))}</strong>
+                  </span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-[10px] text-text-muted uppercase tracking-wider border-b border-gray-100">
+                        <th className="text-left px-3 py-2.5 whitespace-nowrap">Data</th>
+                        <th className="text-left px-3 py-2.5">Descrição</th>
+                        <th className="text-left px-3 py-2.5">Categoria</th>
+                        <th className="text-right px-3 py-2.5">Valor</th>
+                        <th className="px-3 py-2.5"></th>
+                        <th className="px-3 py-2.5"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {despesas.map(d => (
+                        <tr key={d.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-3 py-2 text-text-muted whitespace-nowrap">{dataFmt(d.data)}</td>
+                          <td className="px-3 py-2 font-medium text-text-main">{d.descricao}</td>
+                          <td className="px-3 py-2 text-text-muted">{d.categoria}</td>
+                          <td className="px-3 py-2 text-right font-semibold text-red-500">{moeda(d.valor)}</td>
+                          <td className="px-3 py-2 text-center">
+                            {d.comprovante_url
+                              ? <a href={d.comprovante_url} target="_blank" rel="noopener noreferrer" title="Ver comprovante" className="text-base hover:opacity-70 transition-opacity">📄</a>
+                              : <span className="text-gray-200">—</span>}
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <button onClick={() => apagarDespesa(d.id)}
+                              className="text-gray-300 hover:text-red-500 transition-colors text-base leading-none"
+                              title="Apagar despesa">🗑</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
