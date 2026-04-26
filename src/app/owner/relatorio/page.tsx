@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import type jsPDFType from "jspdf";
 
 const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 const PLANOS = new Set(["eupet", "petcare", "petlove", "pettop"]);
@@ -71,6 +72,34 @@ function RelatorioContent() {
 
   const [exames, setExames] = useState<Exame[]>([]);
   const [carregando, setCarregando] = useState(true);
+  const [gerando, setGerando] = useState(false);
+
+  async function gerarPDF() {
+    setGerando(true);
+    try {
+      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+        import("jspdf"),
+        import("html2canvas"),
+      ]);
+      const el = document.getElementById("relatorio-doc") as HTMLElement;
+      const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new (jsPDF as unknown as typeof jsPDFType)("p", "mm", "a4");
+      const pw = pdf.internal.pageSize.getWidth();
+      const ph = pdf.internal.pageSize.getHeight();
+      const imgH = (canvas.height * pw) / canvas.width;
+      let y = 0;
+      while (y < imgH) {
+        if (y > 0) pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, -y, pw, imgH);
+        y += ph;
+      }
+      const mesNomeArq = MESES[mes - 1].toLowerCase();
+      pdf.save(`relatorio-cia-do-animal-${mesNomeArq}-${ano}.pdf`);
+    } finally {
+      setGerando(false);
+    }
+  }
 
   useEffect(() => {
     const supabase = createClient();
@@ -230,13 +259,18 @@ function RelatorioContent() {
 
       {/* Toolbar — hidden on print */}
       <div className="toolbar">
-        <p>Para salvar: toque em <strong>Imprimir PDF</strong> e escolha <strong>&ldquo;Salvar como PDF&rdquo;</strong> no diálogo</p>
-        <button onClick={() => window.print()}>🖨 Imprimir PDF</button>
+        <button
+          onClick={gerarPDF}
+          disabled={gerando}
+          style={{ background: "#8B1A1A", color: "#fff", border: "none", padding: "10px 22px", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: gerando ? "not-allowed" : "pointer", opacity: gerando ? 0.7 : 1 }}
+        >
+          {gerando ? "Gerando PDF..." : "⬇ Baixar PDF"}
+        </button>
       </div>
 
       {/* Scroll wrapper for small screens */}
       <div className="page-scroll">
-        <div className="page">
+        <div className="page" id="relatorio-doc">
 
           {/* Header */}
           <div className="header">
