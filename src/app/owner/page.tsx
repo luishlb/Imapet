@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
+import { moeda, dataFmt, ultimoDiaMes } from "@/lib/utils";
 
 const SENHA = process.env.NEXT_PUBLIC_OWNER_PASSWORD || "imapet2024";
 const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
@@ -18,19 +19,6 @@ type Exame = {
   nome_paciente: string | null;
   pets: { nome: string } | null;
 };
-
-function moeda(v: number) {
-  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
-
-function dataFmt(d: string) {
-  const [a, m, dia] = d.split("-");
-  return `${dia}/${m}/${a}`;
-}
-
-function ultimoDiaMes(mes: number, ano: number) {
-  return new Date(ano, mes, 0).getDate();
-}
 
 const anos = [2024, 2025, 2026, 2027];
 

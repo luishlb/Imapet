@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { moeda, dataFmt } from "@/lib/utils";
 
 type Exame = {
   id: string;
@@ -22,15 +23,6 @@ const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Ag
 const HOJE = new Date();
 const PRIMEIRO_DIA_MES = `${HOJE.getFullYear()}-${String(HOJE.getMonth() + 1).padStart(2, "0")}-01`;
 const HOJE_STR = HOJE.toISOString().split("T")[0];
-
-function moeda(v: number) {
-  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
-
-function dataFmt(d: string) {
-  const [a, m, dia] = d.split("-");
-  return `${dia}/${m}/${a}`;
-}
 
 function normalizarPagamento(p: string): string {
   if (!p) return "Outro";

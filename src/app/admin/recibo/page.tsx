@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { valorExtenso } from "@/lib/utils";
 
 function formatarCPF(v: string) {
   return v.replace(/\D/g, "").slice(0, 11)
@@ -18,38 +19,7 @@ function dataPorExtenso(d: string) {
   return `${parseInt(dia)} de ${meses[parseInt(mes) - 1]} de ${ano}`;
 }
 
-function valorExtenso(valor: number): string {
-  if (isNaN(valor) || valor < 0) return "";
-  const reais = Math.floor(valor);
-  const centavos = Math.round((valor - reais) * 100);
 
-  const u = ["","um","dois","três","quatro","cinco","seis","sete","oito","nove",
-    "dez","onze","doze","treze","quatorze","quinze","dezesseis","dezessete","dezoito","dezenove"];
-  const d = ["","","vinte","trinta","quarenta","cinquenta","sessenta","setenta","oitenta","noventa"];
-  const c = ["","cento","duzentos","trezentos","quatrocentos","quinhentos","seiscentos","setecentos","oitocentos","novecentos"];
-
-  function n2w(n: number): string {
-    if (n === 0) return "";
-    if (n === 100) return "cem";
-    if (n < 20) return u[n];
-    if (n < 100) return d[Math.floor(n/10)] + (n%10 ? " e " + u[n%10] : "");
-    const resto = n % 100;
-    return c[Math.floor(n/100)] + (resto ? " e " + n2w(resto) : "");
-  }
-
-  function full(n: number): string {
-    if (n === 0) return "zero";
-    if (n < 1000) return n2w(n);
-    const mil = Math.floor(n / 1000);
-    const resto = n % 1000;
-    const milStr = mil === 1 ? "mil" : n2w(mil) + " mil";
-    return milStr + (resto ? (resto < 100 ? " e " : ", ") + n2w(resto) : "");
-  }
-
-  let result = full(reais) + (reais === 1 ? " real" : " reais");
-  if (centavos > 0) result += " e " + n2w(centavos) + (centavos === 1 ? " centavo" : " centavos");
-  return result.charAt(0).toUpperCase() + result.slice(1);
-}
 
 export default function ReciboPage() {
   const hoje = new Date().toISOString().split("T")[0];

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { moeda, dataFmt } from "@/lib/utils";
 
 const CATEGORIAS = ["Impostos", "Marketing", "Contabilidade", "Transporte", "Equipamento", "Seguros", "Outros"];
 
@@ -15,15 +16,6 @@ type Despesa = {
   valor: number;
   comprovante_url: string | null;
 };
-
-function moeda(v: number) {
-  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
-
-function dataFmt(d: string) {
-  const [a, m, dia] = d.split("-");
-  return `${dia}/${m}/${a}`;
-}
 
 export default function DespesasPage() {
   const hoje = new Date().toISOString().split("T")[0];
