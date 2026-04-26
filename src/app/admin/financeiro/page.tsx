@@ -77,7 +77,7 @@ export default function FinanceiroPage() {
   useEffect(() => { fetchTodos().then(d => { setExames(d); setCarregando(false); }); }, []);
 
   const [busca, setBusca] = useState("");
-  const [filtroPgto, setFiltroPgto] = useState("");
+  const [filtroClinica, setFiltroClinica] = useState("");
 
   const filtradosPeriodo = useMemo(() =>
     exames.filter(e => {
@@ -86,15 +86,15 @@ export default function FinanceiroPage() {
       return e.data_exame >= dataInicioAplicada && e.data_exame <= dataFimAplicada;
     }), [exames, modo, mesSel, anoSel, dataInicioAplicada, dataFimAplicada]);
 
-  const pgtoOptions = useMemo(() => {
-    const set = new Set(filtradosPeriodo.map(e => normalizarPagamento(e.forma_pagamento)).filter(Boolean));
+  const clinicaOptions = useMemo(() => {
+    const set = new Set(filtradosPeriodo.map(e => e.clinica).filter(Boolean));
     return [...set].sort();
   }, [filtradosPeriodo]);
 
   const filtrados = useMemo(() => {
     const q = busca.trim().toLowerCase();
     return filtradosPeriodo.filter(e => {
-      if (filtroPgto && normalizarPagamento(e.forma_pagamento) !== filtroPgto) return false;
+      if (filtroClinica && e.clinica !== filtroClinica) return false;
       if (!q) return true;
       const paciente = (e.nome_paciente || e.pets?.nome || "").toLowerCase();
       const clinica = (e.clinica || "").toLowerCase();
@@ -102,7 +102,7 @@ export default function FinanceiroPage() {
       const data = dataFmt(e.data_exame);
       return paciente.includes(q) || clinica.includes(q) || tipo.includes(q) || data.includes(q);
     });
-  }, [filtradosPeriodo, busca, filtroPgto]);
+  }, [filtradosPeriodo, busca, filtroClinica]);
 
   const anos = useMemo(() => {
     const set = new Set(exames.map(e => new Date(e.data_exame + "T12:00:00").getFullYear()));
@@ -166,13 +166,13 @@ export default function FinanceiroPage() {
                 <h2 className="font-semibold text-text-main">
                   Exames — {labelPeriodo}
                   <span className="ml-2 text-text-muted font-normal text-sm">
-                    {(busca || filtroPgto) && filtrados.length !== filtradosPeriodo.length
+                    {(busca || filtroClinica) && filtrados.length !== filtradosPeriodo.length
                       ? `(${filtrados.length} de ${filtradosPeriodo.length})`
                       : `(${filtradosPeriodo.length})`}
                   </span>
                 </h2>
-                {(busca || filtroPgto) && (
-                  <button type="button" onClick={() => { setBusca(""); setFiltroPgto(""); }}
+                {(busca || filtroClinica) && (
+                  <button type="button" onClick={() => { setBusca(""); setFiltroClinica(""); }}
                     className="text-xs text-text-muted hover:text-red-500 transition-colors">
                     Limpar filtros
                   </button>
@@ -186,18 +186,18 @@ export default function FinanceiroPage() {
                   placeholder="Buscar por paciente, clínica, serviço ou data..."
                   className="input text-sm flex-1"
                 />
-                {pgtoOptions.length > 1 && (
-                  <select value={filtroPgto} onChange={e => setFiltroPgto(e.target.value)}
-                    className="input text-sm sm:w-36">
-                    <option value="">Pgto.: todos</option>
-                    {pgtoOptions.map(p => <option key={p} value={p}>{p}</option>)}
+                {clinicaOptions.length > 1 && (
+                  <select value={filtroClinica} onChange={e => setFiltroClinica(e.target.value)}
+                    className="input text-sm sm:w-44">
+                    <option value="">Clínica: todas</option>
+                    {clinicaOptions.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 )}
               </div>
             </div>
             {filtrados.length === 0 ? (
               <p className="text-sm text-text-muted px-6 py-8">
-                {busca || filtroPgto ? "Nenhum exame encontrado para essa busca." : "Nenhum exame neste período."}
+                {busca || filtroClinica ? "Nenhum exame encontrado para essa busca." : "Nenhum exame neste período."}
               </p>
             ) : (
               <div className="overflow-x-auto">
