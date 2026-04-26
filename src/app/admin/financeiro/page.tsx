@@ -175,10 +175,13 @@ export default function FinanceiroPage() {
                         <td className="px-2 py-2 text-right text-text-muted">{e.valor_bruto ? moeda(e.valor_bruto) : "—"}</td>
                         <td className="px-2 py-2 text-right text-text-muted">{e.valor_bruto ? moeda(e.valor_bruto * 0.42) : "—"}</td>
                         <td className="px-2 py-2 text-right font-semibold text-primary">{e.valor ? moeda(e.valor) : "—"}</td>
-                        <td className="px-2 py-2 text-center">
+                        <td className="px-2 py-2 text-center whitespace-nowrap">
                           {e.laudo_url
-                            ? <a href={e.laudo_url} target="_blank" rel="noopener noreferrer" title="Ver laudo" className="text-base hover:opacity-70 transition-opacity">📄</a>
-                            : <span className="text-gray-200">—</span>}
+                            ? <a href={e.laudo_url} target="_blank" rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-[11px] font-medium hover:bg-primary/20 transition-colors">
+                                📄 Laudo
+                              </a>
+                            : <span className="text-gray-300 text-xs">—</span>}
                         </td>
                       </tr>
                     ))}

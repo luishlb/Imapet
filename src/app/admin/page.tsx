@@ -284,13 +284,6 @@ export default function AdminPage() {
     }
   }
 
-  function enviarParaTodosWhatsApp() {
-    const validos = numerosWhatsapp.map((n, i) => ({ n, i })).filter(({ n }) => n.replace(/\D/g, ""));
-    validos.forEach(({ n, i }, ordem) => {
-      setTimeout(() => abrirWhatsApp(n, i), ordem * 400);
-    });
-  }
-
   function novoExame() {
     setForm({
       nomeTutor: "", cpf: "", emailTutor: "", whatsappTutor: "",
@@ -775,12 +768,6 @@ export default function AdminPage() {
                         )}
                       </div>
                     ))}
-                    {numerosWhatsapp.filter(n => n.trim()).length > 1 && (
-                      <button type="button" onClick={enviarParaTodosWhatsApp}
-                        className="w-full mt-1 bg-green-500 hover:bg-green-600 text-white font-medium py-2.5 rounded-xl text-sm transition">
-                        💬 Enviar para todos ({numerosWhatsapp.filter(n => n.trim()).length})
-                      </button>
-                    )}
                   </div>
                 </div>
               </div>
