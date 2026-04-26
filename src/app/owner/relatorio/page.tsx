@@ -106,9 +106,10 @@ function RelatorioContent() {
         @media print {
           .no-print { display: none !important; }
           body { margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          @page { margin: 15mm 20mm; size: A4 portrait; }
+          @page { margin: 0; size: A4 portrait; }
+          #pagina { min-height: 100vh; }
         }
-        body { font-family: Arial, sans-serif; }
+        body { font-family: Arial, sans-serif; margin: 0; }
       `}</style>
 
       <div className="no-print fixed top-4 right-4 z-50 flex gap-2">
@@ -122,12 +123,15 @@ function RelatorioContent() {
         </button>
       </div>
 
-      <div className="min-h-screen bg-white relative" style={{ padding: "40px 50px" }}>
-
-        {/* Watermark */}
-        <div className="fixed bottom-0 right-0 pointer-events-none" style={{ opacity: 0.07, width: 380, height: 380 }}>
-          <img src="/Logomarca/57423_Imapet_040521_aa-01.png" alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
-        </div>
+      <div id="pagina" style={{
+        minHeight: "100vh",
+        backgroundImage: "url('/timbrado.png')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+        padding: "36px 50px 40px",
+        boxSizing: "border-box",
+      }}>
 
         {/* Header */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
@@ -184,7 +188,7 @@ function RelatorioContent() {
         </p>
 
         {/* Assinatura */}
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: 60 }}>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 120 }}>
           <div style={{ textAlign: "center" }}>
             <img src="/assinatura.png" alt="Assinatura" style={{ height: 75, objectFit: "contain", display: "block", margin: "0 auto 4px" }} />
             <div style={{ borderTop: "1px solid #aaa", paddingTop: 8, width: 260 }}>
@@ -192,14 +196,6 @@ function RelatorioContent() {
               <p style={{ fontSize: 11, color: "#777", margin: "2px 0 0" }}>Médica Veterinária — CRMV-PE 5916</p>
             </div>
           </div>
-        </div>
-
-        {/* Footer contato */}
-        <div style={{ borderTop: "1px solid #eee", paddingTop: 10, display: "flex", gap: 24, fontSize: 11, color: "#888", flexWrap: "wrap" }}>
-          <span>🌐 www.imapet.com.br</span>
-          <span>✉️ atendimento@imapet.com.br</span>
-          <span>📷 @Imapet_diagvet</span>
-          <span>📘 Imapet_diagvet</span>
         </div>
 
       </div>
