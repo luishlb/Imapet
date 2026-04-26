@@ -58,6 +58,13 @@ export default function OwnerPage() {
     setAutenticado(false);
   }
 
+  async function apagarExame(id: string) {
+    if (!window.confirm("Apagar este exame permanentemente?")) return;
+    const supabase = createClient();
+    const { error } = await supabase.from("exames").delete().eq("id", id);
+    if (!error) setExamesPgto(prev => prev.filter(e => e.id !== id));
+  }
+
   async function calcular() {
     setCarregandoPgto(true);
     setCalculado(false);
@@ -209,6 +216,7 @@ export default function OwnerPage() {
                           <th className="text-left px-3 py-2.5">Serviço</th>
                           <th className="text-right px-3 py-2.5">Bruto</th>
                           <th className="text-right px-3 py-2.5">Vet. 42%</th>
+                          <th className="px-3 py-2.5"></th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-50">
@@ -220,6 +228,15 @@ export default function OwnerPage() {
                             <td className="px-3 py-2 text-text-muted">{e.tipo || "—"}</td>
                             <td className="px-3 py-2 text-right text-text-muted">{e.valor_bruto ? moeda(e.valor_bruto) : "—"}</td>
                             <td className="px-3 py-2 text-right font-semibold text-primary">{e.valor_bruto ? moeda(e.valor_bruto * 0.42) : "—"}</td>
+                            <td className="px-3 py-2 text-center">
+                              <button
+                                onClick={() => apagarExame(e.id)}
+                                className="text-gray-300 hover:text-red-500 transition-colors text-base leading-none"
+                                title="Apagar exame"
+                              >
+                                🗑
+                              </button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
