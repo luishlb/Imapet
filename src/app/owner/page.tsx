@@ -16,6 +16,7 @@ type Exame = {
   clinica: string | null;
   forma_pagamento: string | null;
   valor_bruto: number | null;
+  valor: number | null;
   nome_paciente: string | null;
   pets: { nome: string } | null;
 };
@@ -32,7 +33,7 @@ async function fetchTodos(): Promise<Exame[]> {
   while (true) {
     const { data } = await supabase
       .from("exames")
-      .select("id, data_exame, tipo, clinica, forma_pagamento, valor_bruto, nome_paciente, pets(nome)")
+      .select("id, data_exame, tipo, clinica, forma_pagamento, valor_bruto, valor, nome_paciente, pets(nome)")
       .order("data_exame", { ascending: false })
       .range(from, from + PAGE - 1);
     if (!data || data.length === 0) break;
@@ -73,6 +74,23 @@ export default function OwnerPage() {
   const [dataFimAplicada, setDataFimAplicada] = useState(HOJE_STR);
   const [buscaTabela, setBuscaTabela] = useState("");
   const [filtroClinicaTabela, setFiltroClinicaTabela] = useState("");
+
+  // Resumo financeiro
+  const [modoFin, setModoFin] = useState<"mes_atual" | "mensal">("mes_atual");
+  const [mesFinSel, setMesFinSel] = useState(HOJE.getMonth() + 1);
+  const [anoFinSel, setAnoFinSel] = useState(HOJE.getFullYear());
+
+  const filtradosFin = useMemo(() =>
+    todosExames.filter(e => {
+      const d = new Date(e.data_exame + "T12:00:00");
+      if (modoFin === "mes_atual") return e.data_exame >= PRIMEIRO_DIA_MES && e.data_exame <= HOJE_STR;
+      return d.getMonth() + 1 === mesFinSel && d.getFullYear() === anoFinSel;
+    }), [todosExames, modoFin, mesFinSel, anoFinSel]);
+
+  const totalBrutoFin = useMemo(() => filtradosFin.reduce((s, e) => s + (e.valor_bruto || 0), 0), [filtradosFin]);
+  const totalEmpresaFin = useMemo(() => filtradosFin.reduce((s, e) => s + (e.valor || 0), 0), [filtradosFin]);
+  const totalVet42Fin = useMemo(() => Math.round(totalBrutoFin * 0.42 * 100) / 100, [totalBrutoFin]);
+  const ticketMedioFin = filtradosFin.length > 0 ? totalBrutoFin / filtradosFin.length : 0;
 
   const filtradosPeriodoTabela = useMemo(() =>
     todosExames.filter(e => {
@@ -160,7 +178,7 @@ export default function OwnerPage() {
 
     const { data } = await supabase
       .from("exames")
-      .select("id, data_exame, tipo, clinica, forma_pagamento, valor_bruto, nome_paciente, pets(nome)")
+      .select("id, data_exame, tipo, clinica, forma_pagamento, valor_bruto, valor, nome_paciente, pets(nome)")
       .gte("data_exame", dataInicio)
       .lte("data_exame", dataFim)
       .order("data_exame");
@@ -317,6 +335,54 @@ export default function OwnerPage() {
                     </table>
                   </div>
                 )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── RESUMO FINANCEIRO ── */}
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <div className="px-6 py-5 border-b border-gray-100">
+            <h2 className="font-playfair text-xl font-bold text-text-main">Resumo financeiro</h2>
+            <p className="text-xs text-text-muted mt-0.5">Faturamento e distribuição do período</p>
+          </div>
+          <div className="px-6 py-5 space-y-4">
+            <div className="flex rounded-xl overflow-hidden border border-gray-200 w-fit">
+              <button onClick={() => setModoFin("mes_atual")} className={`px-4 py-2 text-sm font-medium transition-colors ${modoFin === "mes_atual" ? "bg-primary text-white" : "bg-white text-text-muted hover:bg-gray-50"}`}>Mês atual</button>
+              <button onClick={() => setModoFin("mensal")} className={`px-4 py-2 text-sm font-medium transition-colors ${modoFin === "mensal" ? "bg-primary text-white" : "bg-white text-text-muted hover:bg-gray-50"}`}>Mensal</button>
+            </div>
+            {modoFin === "mensal" && (
+              <div className="flex items-center gap-2">
+                <select value={mesFinSel} onChange={e => setMesFinSel(Number(e.target.value))} className="input text-sm py-2">
+                  {MESES.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+                </select>
+                <select value={anoFinSel} onChange={e => setAnoFinSel(Number(e.target.value))} className="input text-sm py-2">
+                  {anos.map(a => <option key={a} value={a}>{a}</option>)}
+                </select>
+              </div>
+            )}
+            {carregandoTabela ? (
+              <p className="text-xs text-text-muted">Carregando...</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-primary/5 rounded-xl p-4">
+                  <p className="text-xs text-text-muted mb-1">Faturamento bruto</p>
+                  <p className="font-playfair text-xl font-bold text-text-main">{moeda(totalBrutoFin)}</p>
+                  <p className="text-xs text-text-muted mt-1">{filtradosFin.length} atendimento{filtradosFin.length !== 1 ? "s" : ""}</p>
+                </div>
+                <div className="bg-primary/5 rounded-xl p-4">
+                  <p className="text-xs text-text-muted mb-1">Fat. empresa</p>
+                  <p className="font-playfair text-xl font-bold text-text-main">{moeda(totalEmpresaFin)}</p>
+                  <p className="text-xs text-text-muted mt-1">após repasse vet.</p>
+                </div>
+                <div className="rounded-xl border border-gray-100 p-4">
+                  <p className="text-xs text-text-muted mb-1">Repasse vet. (42%)</p>
+                  <p className="font-playfair text-xl font-bold text-primary">{moeda(totalVet42Fin)}</p>
+                </div>
+                <div className="rounded-xl border border-gray-100 p-4">
+                  <p className="text-xs text-text-muted mb-1">Ticket médio</p>
+                  <p className="font-playfair text-xl font-bold text-text-main">{filtradosFin.length > 0 ? moeda(ticketMedioFin) : "—"}</p>
+                </div>
               </div>
             )}
           </div>
