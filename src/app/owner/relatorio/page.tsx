@@ -91,132 +91,252 @@ function RelatorioContent() {
 
   const totalPendente = exames.reduce((s, e) =>
     formatarPagamento(e.forma_pagamento) === "Pendente" ? s + (e.valor_bruto || 0) : s, 0);
+  const totalGeral = exames.reduce((s, e) => s + (e.valor_bruto || 0), 0);
 
   const ultimoDia = ultimoDiaMes(mes, ano);
   const dataFimStr = `${String(ultimoDia).padStart(2,"0")}/${String(mes).padStart(2,"0")}/${ano}`;
   const mesNome = MESES[mes - 1];
 
   if (carregando) {
-    return <div className="flex items-center justify-center min-h-screen text-gray-400 text-sm">Carregando...</div>;
+    return <div style={{ display:"flex", alignItems:"center", justifyContent:"center", minHeight:"100vh", color:"#999", fontSize:14 }}>Carregando...</div>;
   }
 
   return (
     <>
       <style>{`
-        @media print {
-          .no-print { display: none !important; }
-          body { margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          @page { margin: 12mm 15mm; size: A4 portrait; }
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; background: #f0f0f0; font-family: 'Segoe UI', Arial, sans-serif; }
+
+        .toolbar {
+          background: #fff;
+          border-bottom: 1px solid #ddd;
+          padding: 10px 16px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          position: sticky;
+          top: 0;
+          z-index: 100;
         }
-        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: #f5f5f5; }
+        .toolbar p { margin: 0; font-size: 12px; color: #888; flex: 1; }
+        .toolbar button {
+          background: #8B1A1A;
+          color: #fff;
+          border: none;
+          padding: 10px 22px;
+          border-radius: 10px;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+
+        .page {
+          width: 210mm;
+          min-height: 297mm;
+          margin: 24px auto;
+          background: #fff;
+          padding: 16mm 15mm;
+          box-shadow: 0 2px 16px rgba(0,0,0,0.12);
+        }
+
+        .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+        .header-right { text-align: right; }
+        .header-right p { font-size: 10px; color: #999; margin: 4px 0 0; }
+
+        .stripe1 { height: 4px; background: #8B1A1A; border-radius: 2px; margin-bottom: 4px; }
+        .stripe2 { height: 1px; background: #8B1A1A; opacity: 0.25; margin-bottom: 20px; }
+
+        .title { margin-bottom: 16px; }
+        .title h1 { font-size: 16px; font-weight: 700; color: #8B1A1A; margin: 0 0 3px; }
+        .title p { font-size: 12px; color: #666; margin: 0; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 11.5px; margin-bottom: 20px; table-layout: fixed; }
+        thead tr { background: #8B1A1A; }
+        th {
+          padding: 8px 8px;
+          text-align: left;
+          color: #fff;
+          font-size: 10px;
+          font-weight: 600;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+          overflow: hidden;
+        }
+        td {
+          padding: 6px 8px;
+          border-bottom: 1px solid #f0f0f0;
+          color: #444;
+          overflow: hidden;
+          word-break: break-word;
+        }
+        tr:nth-child(even) td { background: #faf8f5; }
+
+        .col-data       { width: 13%; }
+        .col-pagamento  { width: 14%; }
+        .col-valor      { width: 13%; }
+        .col-proc       { width: 35%; }
+        .col-paciente   { width: 25%; }
+
+        .totais {
+          border: 1px solid #e8c4c4;
+          border-radius: 8px;
+          padding: 12px 16px;
+          margin-bottom: 32px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          background: #fff8f8;
+        }
+        .totais-left p { margin: 0; }
+        .totais-label { font-size: 10px; color: #999; text-transform: uppercase; letter-spacing: 0.05em; }
+        .totais-extenso { font-size: 10.5px; color: #c0392b; font-style: italic; margin-top: 3px !important; }
+        .totais-valor { font-size: 22px; font-weight: 700; color: #8B1A1A; margin: 0; }
+
+        .assinatura { display: flex; justify-content: center; margin-bottom: 36px; }
+        .assinatura-inner { text-align: center; }
+        .assinatura-inner img { height: 60px; object-fit: contain; display: block; margin: 0 auto 6px; }
+        .assinatura-linha { border-top: 1px solid #ccc; padding-top: 8px; width: 240px; }
+        .assinatura-nome { font-size: 12.5px; font-weight: 700; color: #333; margin: 0; }
+        .assinatura-cargo { font-size: 10.5px; color: #777; margin: 2px 0 0; }
+        .assinatura-empresa { font-size: 10.5px; color: #8B1A1A; font-weight: 600; margin: 2px 0 0; }
+
+        .footer {
+          border-top: 2px solid #8B1A1A;
+          padding-top: 10px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+        .footer-contacts { display: flex; flex-wrap: wrap; gap: 14px; }
+        .footer-contact { font-size: 10px; color: #666; display: flex; align-items: center; gap: 3px; }
+        .footer img { height: 26px; opacity: 0.2; }
+
+        @media print {
+          .toolbar { display: none !important; }
+          body { background: #fff; }
+          .page { margin: 0; box-shadow: none; padding: 0; width: 100%; }
+          @page { margin: 15mm; size: A4 portrait; }
+        }
+
+        @media screen and (max-width: 800px) {
+          body { background: #e8e8e8; }
+          .page { width: 100%; min-width: 680px; margin: 0; box-shadow: none; }
+          .page-scroll { overflow-x: auto; }
+        }
       `}</style>
 
-      <div className="no-print" style={{ background: "#fff", borderBottom: "1px solid #e5e7eb", padding: "12px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, zIndex: 50 }}>
-        <p style={{ fontSize: 12, color: "#888", margin: 0 }}>Toque em <strong>Salvar PDF</strong> → no diálogo, escolha <strong>"Salvar como PDF"</strong></p>
-        <button onClick={() => window.print()}
-          style={{ background: "#8B1A1A", color: "#fff", fontWeight: 600, padding: "10px 24px", borderRadius: 12, border: "none", cursor: "pointer", fontSize: 14, letterSpacing: "0.01em", flexShrink: 0, marginLeft: 12 }}>
-          Salvar PDF
-        </button>
+      {/* Toolbar — hidden on print */}
+      <div className="toolbar">
+        <p>Para salvar: toque em <strong>Imprimir PDF</strong> e escolha <strong>"Salvar como PDF"</strong> no diálogo</p>
+        <button onClick={() => window.print()}>🖨 Imprimir PDF</button>
       </div>
 
-      <div style={{ maxWidth: 780, margin: "24px auto", padding: "40px 48px", background: "#fff" }}>
+      {/* Scroll wrapper for small screens */}
+      <div className="page-scroll">
+        <div className="page">
 
-        {/* ── HEADER ── */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-          <img src="/Logomarca/57423_Imapet_040521_aa-01.png" alt="IMAPET" style={{ height: 80 }} />
-          <div style={{ textAlign: "right" }}>
-            <img src="/cia-do-animal.jpg" alt="Cia do Animal" style={{ height: 60, objectFit: "contain", display: "block", marginLeft: "auto", marginBottom: 4 }} />
-            <p style={{ fontSize: 11, color: "#888", margin: 0 }}>CNPJ / Clínica Parceira</p>
-          </div>
-        </div>
-
-        {/* Faixa bordô */}
-        <div style={{ background: "#8B1A1A", height: 4, borderRadius: 2, marginBottom: 6 }} />
-        <div style={{ background: "#8B1A1A", height: 1, opacity: 0.3, marginBottom: 24 }} />
-
-        {/* ── TÍTULO ── */}
-        <div style={{ marginBottom: 20 }}>
-          <h1 style={{ fontSize: 17, fontWeight: 700, color: "#8B1A1A", margin: "0 0 4px" }}>
-            Relação de Exames — Cia do Animal
-          </h1>
-          <p style={{ fontSize: 13, color: "#666", margin: 0 }}>
-            Período: {mesNome} de {ano} &nbsp;·&nbsp; Emitido em {new Date().toLocaleDateString("pt-BR")}
-          </p>
-        </div>
-
-        {/* ── TABELA ── */}
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, marginBottom: 24 }}>
-          <thead>
-            <tr style={{ backgroundColor: "#8B1A1A" }}>
-              {["Data", "Pagamento", "Valor", "Procedimento", "Paciente"].map(h => (
-                <th key={h} style={{ padding: "9px 11px", textAlign: "left", fontWeight: 600, color: "#fff", fontSize: 11, letterSpacing: "0.03em", textTransform: "uppercase" }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {exames.length === 0 ? (
-              <tr>
-                <td colSpan={5} style={{ padding: "20px", textAlign: "center", color: "#999", fontStyle: "italic" }}>
-                  Nenhum exame encontrado para este período.
-                </td>
-              </tr>
-            ) : exames.map((e, i) => {
-              const nome = e.nome_paciente || e.pets?.nome || "—";
-              const raca = e.pets?.raca;
-              const paciente = raca ? `${nome}/${raca}` : nome;
-              const pgto = formatarPagamento(e.forma_pagamento);
-              return (
-                <tr key={e.id} style={{ backgroundColor: i % 2 === 0 ? "#faf8f5" : "#fff" }}>
-                  <td style={{ padding: "7px 11px", borderBottom: "1px solid #eee", color: "#444", whiteSpace: "nowrap", fontWeight: 600 }}>{dataFmt(e.data_exame)}</td>
-                  <td style={{ padding: "7px 11px", borderBottom: "1px solid #eee", color: "#555" }}>{pgto}</td>
-                  <td style={{ padding: "7px 11px", borderBottom: "1px solid #eee", color: "#444", whiteSpace: "nowrap" }}>{e.valor_bruto ? moeda(e.valor_bruto) : "—"}</td>
-                  <td style={{ padding: "7px 11px", borderBottom: "1px solid #eee", color: "#555" }}>{e.tipo || "—"}</td>
-                  <td style={{ padding: "7px 11px", borderBottom: "1px solid #eee", color: "#555" }}>{paciente}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-
-        {/* ── TOTAL PENDENTE ── */}
-        <div style={{ background: "#fff8f8", border: "1px solid #f5c6c6", borderRadius: 8, padding: "14px 20px", marginBottom: 40, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <p style={{ fontSize: 11, color: "#888", margin: "0 0 2px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Valor total pendente em {dataFimStr}</p>
-            <p style={{ fontSize: 11, color: "#c0392b", margin: 0, fontStyle: "italic" }}>{valorExtenso(totalPendente)}</p>
-          </div>
-          <p style={{ fontSize: 22, fontWeight: 700, color: "#8B1A1A", margin: 0 }}>{moeda(totalPendente)}</p>
-        </div>
-
-        {/* ── ASSINATURA ── */}
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: 48 }}>
-          <div style={{ textAlign: "center" }}>
-            <img src="/assinatura.png" alt="Assinatura" style={{ height: 70, objectFit: "contain", display: "block", margin: "0 auto 6px" }} />
-            <div style={{ borderTop: "1px solid #ccc", paddingTop: 8, width: 260 }}>
-              <p style={{ fontSize: 13, fontWeight: 700, color: "#333", margin: 0 }}>Camila Bentzen Barreto</p>
-              <p style={{ fontSize: 11, color: "#777", margin: "3px 0 0" }}>Médica Veterinária · CRMV-PE 5916</p>
-              <p style={{ fontSize: 11, color: "#8B1A1A", margin: "2px 0 0", fontWeight: 600 }}>IMAPET Diagnóstico Veterinário por Imagem</p>
+          {/* Header */}
+          <div className="header">
+            <img src="/Logomarca/57423_Imapet_040521_aa-01.png" alt="IMAPET" style={{ height: 70 }} />
+            <div className="header-right">
+              <img src="/cia-do-animal.jpg" alt="Cia do Animal" style={{ height: 52, objectFit: "contain", display: "block", marginLeft: "auto", marginBottom: 2 }} />
+              <p>CNPJ / Clínica Parceira</p>
             </div>
           </div>
-        </div>
 
-        {/* ── FOOTER ── */}
-        <div style={{ borderTop: "2px solid #8B1A1A", paddingTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-          <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
-            {[
-              { icon: "📱", text: "(81) 99674-1525" },
-              { icon: "🌐", text: "www.imapet.com.br" },
-              { icon: "✉️", text: "imapet@imapet.com.br" },
-              { icon: "📷", text: "@Imapet_diagvet" },
-              { icon: "📘", text: "Imapet_diagvet" },
-            ].map(({ icon, text }) => (
-              <span key={text} style={{ fontSize: 10.5, color: "#666", display: "flex", alignItems: "center", gap: 4 }}>
-                <span>{icon}</span>{text}
-              </span>
-            ))}
+          <div className="stripe1" />
+          <div className="stripe2" />
+
+          {/* Título */}
+          <div className="title">
+            <h1>Relação de Exames — Cia do Animal</h1>
+            <p>Período: {mesNome} de {ano} &nbsp;·&nbsp; Emitido em {new Date().toLocaleDateString("pt-BR")}</p>
           </div>
-          <img src="/Logomarca/imapet_transparent.png" alt="" style={{ height: 28, opacity: 0.25 }} />
-        </div>
 
+          {/* Tabela */}
+          <table>
+            <colgroup>
+              <col className="col-data" />
+              <col className="col-pagamento" />
+              <col className="col-valor" />
+              <col className="col-proc" />
+              <col className="col-paciente" />
+            </colgroup>
+            <thead>
+              <tr>
+                {["Data","Pagamento","Valor","Procedimento","Paciente"].map(h => (
+                  <th key={h}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {exames.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: "center", color: "#999", fontStyle: "italic", padding: 20 }}>
+                    Nenhum exame encontrado para este período.
+                  </td>
+                </tr>
+              ) : exames.map((e) => {
+                const nome = e.nome_paciente || e.pets?.nome || "—";
+                const raca = e.pets?.raca;
+                const paciente = raca ? `${nome} (${raca})` : nome;
+                const pgto = formatarPagamento(e.forma_pagamento);
+                return (
+                  <tr key={e.id}>
+                    <td style={{ fontWeight: 600, whiteSpace: "nowrap" }}>{dataFmt(e.data_exame)}</td>
+                    <td>{pgto}</td>
+                    <td style={{ whiteSpace: "nowrap" }}>{e.valor_bruto ? moeda(e.valor_bruto) : "—"}</td>
+                    <td>{e.tipo || "—"}</td>
+                    <td>{paciente}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+
+          {/* Totais */}
+          <div className="totais">
+            <div className="totais-left">
+              <p className="totais-label">Valor total pendente em {dataFimStr}</p>
+              <p className="totais-extenso">{valorExtenso(totalPendente)}</p>
+            </div>
+            <p className="totais-valor">{moeda(totalPendente)}</p>
+          </div>
+
+          {/* Assinatura */}
+          <div className="assinatura">
+            <div className="assinatura-inner">
+              <img src="/assinatura.png" alt="Assinatura" />
+              <div className="assinatura-linha">
+                <p className="assinatura-nome">Camila Bentzen Barreto</p>
+                <p className="assinatura-cargo">Médica Veterinária · CRMV-PE 5916</p>
+                <p className="assinatura-empresa">IMAPET Diagnóstico Veterinário por Imagem</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="footer">
+            <div className="footer-contacts">
+              {[
+                { icon: "📱", text: "(81) 99674-1525" },
+                { icon: "🌐", text: "www.imapet.com.br" },
+                { icon: "✉️", text: "imapet@imapet.com.br" },
+                { icon: "📷", text: "@Imapet_diagvet" },
+              ].map(({ icon, text }) => (
+                <span key={text} className="footer-contact">
+                  <span>{icon}</span>{text}
+                </span>
+              ))}
+            </div>
+            <img src="/Logomarca/imapet_transparent.png" alt="" />
+          </div>
+
+        </div>
       </div>
     </>
   );
@@ -224,7 +344,7 @@ function RelatorioContent() {
 
 export default function RelatorioPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen text-gray-400 text-sm">Carregando...</div>}>
+    <Suspense fallback={<div style={{ display:"flex", alignItems:"center", justifyContent:"center", minHeight:"100vh", color:"#999", fontSize:14 }}>Carregando...</div>}>
       <RelatorioContent />
     </Suspense>
   );
