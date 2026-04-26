@@ -106,10 +106,9 @@ function RelatorioContent() {
         @media print {
           .no-print { display: none !important; }
           body { margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          @page { margin: 0; size: A4 portrait; }
-          #pagina { min-height: 100vh; }
+          @page { margin: 12mm 15mm; size: A4 portrait; }
         }
-        body { font-family: Arial, sans-serif; margin: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: #fff; }
       `}</style>
 
       <div className="no-print fixed top-4 right-4 z-50 flex gap-2">
@@ -123,36 +122,37 @@ function RelatorioContent() {
         </button>
       </div>
 
-      <div id="pagina" style={{
-        minHeight: "100vh",
-        backgroundImage: "url('/timbrado.png')",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-        padding: "36px 50px 40px",
-        boxSizing: "border-box",
-      }}>
+      <div style={{ maxWidth: 780, margin: "0 auto", padding: "40px 48px", background: "#fff" }}>
 
-        {/* Header */}
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
-          <img src="/Logomarca/57423_Imapet_040521_aa-01.png" alt="IMAPET" style={{ height: 75 }} />
-          <img src="/cia-do-animal.jpg" alt="Cia do Animal" style={{ height: 65, objectFit: "contain" }} />
+        {/* ── HEADER ── */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <img src="/Logomarca/57423_Imapet_040521_aa-01.png" alt="IMAPET" style={{ height: 80 }} />
+          <div style={{ textAlign: "right" }}>
+            <img src="/cia-do-animal.jpg" alt="Cia do Animal" style={{ height: 60, objectFit: "contain", display: "block", marginLeft: "auto", marginBottom: 4 }} />
+            <p style={{ fontSize: 11, color: "#888", margin: 0 }}>CNPJ / Clínica Parceira</p>
+          </div>
         </div>
 
-        {/* Red line */}
-        <div style={{ borderTop: "2px solid #8B1A1A", marginBottom: 28 }} />
+        {/* Faixa bordô */}
+        <div style={{ background: "#8B1A1A", height: 4, borderRadius: 2, marginBottom: 6 }} />
+        <div style={{ background: "#8B1A1A", height: 1, opacity: 0.3, marginBottom: 24 }} />
 
-        {/* Title */}
-        <h1 style={{ textAlign: "center", fontSize: 18, fontWeight: 600, color: "#333", marginBottom: 20 }}>
-          Relação dos exames realizados na clínica veterinária Cia do Animal — {mesNome} {ano}:
-        </h1>
+        {/* ── TÍTULO ── */}
+        <div style={{ marginBottom: 20 }}>
+          <h1 style={{ fontSize: 17, fontWeight: 700, color: "#8B1A1A", margin: "0 0 4px" }}>
+            Relação de Exames — Cia do Animal
+          </h1>
+          <p style={{ fontSize: 13, color: "#666", margin: 0 }}>
+            Período: {mesNome} de {ano} &nbsp;·&nbsp; Emitido em {new Date().toLocaleDateString("pt-BR")}
+          </p>
+        </div>
 
-        {/* Table */}
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginBottom: 28 }}>
+        {/* ── TABELA ── */}
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, marginBottom: 24 }}>
           <thead>
-            <tr style={{ backgroundColor: "#C8B89A" }}>
-              {["Data","Forma de Pagamento","Valor","Procedimento","Paciente"].map(h => (
-                <th key={h} style={{ border: "1px solid #C8B89A", padding: "7px 10px", textAlign: "left", fontWeight: 600, color: "#333" }}>{h}</th>
+            <tr style={{ backgroundColor: "#8B1A1A" }}>
+              {["Data", "Pagamento", "Valor", "Procedimento", "Paciente"].map(h => (
+                <th key={h} style={{ padding: "9px 11px", textAlign: "left", fontWeight: 600, color: "#fff", fontSize: 11, letterSpacing: "0.03em", textTransform: "uppercase" }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -168,34 +168,63 @@ function RelatorioContent() {
               const raca = e.pets?.raca;
               const paciente = raca ? `${nome}/${raca}` : nome;
               const pgto = formatarPagamento(e.forma_pagamento);
-              const bg = i % 2 === 0 ? "#F5F0E8" : "#FFFFFF";
+              const isPendente = pgto === "Pendente";
               return (
-                <tr key={e.id} style={{ backgroundColor: bg }}>
-                  <td style={{ border: "1px solid #ddd", padding: "6px 10px", fontWeight: 600, color: "#333", whiteSpace: "nowrap" }}>{dataFmt(e.data_exame)}</td>
-                  <td style={{ border: "1px solid #ddd", padding: "6px 10px", color: "#555" }}>{pgto}</td>
-                  <td style={{ border: "1px solid #ddd", padding: "6px 10px", color: "#555", whiteSpace: "nowrap" }}>{e.valor_bruto ? moeda(e.valor_bruto) : "—"}</td>
-                  <td style={{ border: "1px solid #ddd", padding: "6px 10px", color: "#555" }}>{e.tipo || "—"}</td>
-                  <td style={{ border: "1px solid #ddd", padding: "6px 10px", color: "#555" }}>{paciente}</td>
+                <tr key={e.id} style={{ backgroundColor: i % 2 === 0 ? "#faf8f5" : "#fff" }}>
+                  <td style={{ padding: "7px 11px", borderBottom: "1px solid #eee", color: "#444", whiteSpace: "nowrap", fontWeight: 600 }}>{dataFmt(e.data_exame)}</td>
+                  <td style={{ padding: "7px 11px", borderBottom: "1px solid #eee" }}>
+                    <span style={{
+                      display: "inline-block", padding: "2px 8px", borderRadius: 4, fontSize: 11, fontWeight: 600,
+                      background: isPendente ? "#fff3f3" : "#f0f7f0",
+                      color: isPendente ? "#c0392b" : "#2e7d32",
+                      border: `1px solid ${isPendente ? "#f5c6c6" : "#c3e6cb"}`,
+                    }}>{pgto}</span>
+                  </td>
+                  <td style={{ padding: "7px 11px", borderBottom: "1px solid #eee", color: "#444", whiteSpace: "nowrap" }}>{e.valor_bruto ? moeda(e.valor_bruto) : "—"}</td>
+                  <td style={{ padding: "7px 11px", borderBottom: "1px solid #eee", color: "#555" }}>{e.tipo || "—"}</td>
+                  <td style={{ padding: "7px 11px", borderBottom: "1px solid #eee", color: "#555" }}>{paciente}</td>
                 </tr>
               );
             })}
           </tbody>
         </table>
 
-        {/* Total pendente */}
-        <p style={{ textAlign: "center", fontWeight: 700, fontSize: 14, color: "#333", marginBottom: 60 }}>
-          Valor total pendente em {dataFimStr}: {moeda(totalPendente)} ({valorExtenso(totalPendente)})
-        </p>
+        {/* ── TOTAL PENDENTE ── */}
+        <div style={{ background: "#fff8f8", border: "1px solid #f5c6c6", borderRadius: 8, padding: "14px 20px", marginBottom: 40, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <p style={{ fontSize: 11, color: "#888", margin: "0 0 2px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Valor total pendente em {dataFimStr}</p>
+            <p style={{ fontSize: 11, color: "#c0392b", margin: 0, fontStyle: "italic" }}>{valorExtenso(totalPendente)}</p>
+          </div>
+          <p style={{ fontSize: 22, fontWeight: 700, color: "#8B1A1A", margin: 0 }}>{moeda(totalPendente)}</p>
+        </div>
 
-        {/* Assinatura */}
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: 120 }}>
+        {/* ── ASSINATURA ── */}
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 48 }}>
           <div style={{ textAlign: "center" }}>
-            <img src="/assinatura.png" alt="Assinatura" style={{ height: 75, objectFit: "contain", display: "block", margin: "0 auto 4px" }} />
-            <div style={{ borderTop: "1px solid #aaa", paddingTop: 8, width: 260 }}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: "#333", margin: 0 }}>Camila Bentzen Barreto</p>
-              <p style={{ fontSize: 11, color: "#777", margin: "2px 0 0" }}>Médica Veterinária — CRMV-PE 5916</p>
+            <img src="/assinatura.png" alt="Assinatura" style={{ height: 70, objectFit: "contain", display: "block", margin: "0 auto 6px" }} />
+            <div style={{ borderTop: "1px solid #ccc", paddingTop: 8, width: 260 }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: "#333", margin: 0 }}>Camila Bentzen Barreto</p>
+              <p style={{ fontSize: 11, color: "#777", margin: "3px 0 0" }}>Médica Veterinária · CRMV-PE 5916</p>
+              <p style={{ fontSize: 11, color: "#8B1A1A", margin: "2px 0 0", fontWeight: 600 }}>IMAPET Diagnóstico Veterinário por Imagem</p>
             </div>
           </div>
+        </div>
+
+        {/* ── FOOTER ── */}
+        <div style={{ borderTop: "2px solid #8B1A1A", paddingTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+          <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+            {[
+              { icon: "🌐", text: "www.imapet.com.br" },
+              { icon: "✉️", text: "imapet@imapet.com.br" },
+              { icon: "📷", text: "@Imapet_diagvet" },
+              { icon: "📘", text: "Imapet_diagvet" },
+            ].map(({ icon, text }) => (
+              <span key={text} style={{ fontSize: 10.5, color: "#666", display: "flex", alignItems: "center", gap: 4 }}>
+                <span>{icon}</span>{text}
+              </span>
+            ))}
+          </div>
+          <img src="/Logomarca/imapet_transparent.png" alt="" style={{ height: 28, opacity: 0.25 }} />
         </div>
 
       </div>
