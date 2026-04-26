@@ -186,18 +186,10 @@ function RelatorioContent() {
               const raca = e.pets?.raca;
               const paciente = raca ? `${nome}/${raca}` : nome;
               const pgto = formatarPagamento(e.forma_pagamento);
-              const isPendente = pgto === "Pendente";
               return (
                 <tr key={e.id} style={{ backgroundColor: i % 2 === 0 ? "#faf8f5" : "#fff" }}>
                   <td style={{ padding: "7px 11px", borderBottom: "1px solid #eee", color: "#444", whiteSpace: "nowrap", fontWeight: 600 }}>{dataFmt(e.data_exame)}</td>
-                  <td style={{ padding: "7px 11px", borderBottom: "1px solid #eee" }}>
-                    <span style={{
-                      display: "inline-block", padding: "2px 8px", borderRadius: 4, fontSize: 11, fontWeight: 600,
-                      background: isPendente ? "#fff3f3" : "#f0f7f0",
-                      color: isPendente ? "#c0392b" : "#2e7d32",
-                      border: `1px solid ${isPendente ? "#f5c6c6" : "#c3e6cb"}`,
-                    }}>{pgto}</span>
-                  </td>
+                  <td style={{ padding: "7px 11px", borderBottom: "1px solid #eee", color: "#555" }}>{pgto}</td>
                   <td style={{ padding: "7px 11px", borderBottom: "1px solid #eee", color: "#444", whiteSpace: "nowrap" }}>{e.valor_bruto ? moeda(e.valor_bruto) : "—"}</td>
                   <td style={{ padding: "7px 11px", borderBottom: "1px solid #eee", color: "#555" }}>{e.tipo || "—"}</td>
                   <td style={{ padding: "7px 11px", borderBottom: "1px solid #eee", color: "#555" }}>{paciente}</td>
