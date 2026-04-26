@@ -76,12 +76,33 @@ export default function FinanceiroPage() {
 
   useEffect(() => { fetchTodos().then(d => { setExames(d); setCarregando(false); }); }, []);
 
-  const filtrados = useMemo(() =>
+  const [busca, setBusca] = useState("");
+  const [filtroPgto, setFiltroPgto] = useState("");
+
+  const filtradosPeriodo = useMemo(() =>
     exames.filter(e => {
       const d = new Date(e.data_exame + "T12:00:00");
       if (modo === "mensal") return d.getMonth() + 1 === mesSel && d.getFullYear() === anoSel;
       return e.data_exame >= dataInicioAplicada && e.data_exame <= dataFimAplicada;
     }), [exames, modo, mesSel, anoSel, dataInicioAplicada, dataFimAplicada]);
+
+  const pgtoOptions = useMemo(() => {
+    const set = new Set(filtradosPeriodo.map(e => normalizarPagamento(e.forma_pagamento)).filter(Boolean));
+    return [...set].sort();
+  }, [filtradosPeriodo]);
+
+  const filtrados = useMemo(() => {
+    const q = busca.trim().toLowerCase();
+    return filtradosPeriodo.filter(e => {
+      if (filtroPgto && normalizarPagamento(e.forma_pagamento) !== filtroPgto) return false;
+      if (!q) return true;
+      const paciente = (e.nome_paciente || e.pets?.nome || "").toLowerCase();
+      const clinica = (e.clinica || "").toLowerCase();
+      const tipo = (e.tipo || "").toLowerCase();
+      const data = dataFmt(e.data_exame);
+      return paciente.includes(q) || clinica.includes(q) || tipo.includes(q) || data.includes(q);
+    });
+  }, [filtradosPeriodo, busca, filtroPgto]);
 
   const anos = useMemo(() => {
     const set = new Set(exames.map(e => new Date(e.data_exame + "T12:00:00").getFullYear()));
@@ -140,14 +161,44 @@ export default function FinanceiroPage() {
           <p className="text-center text-text-muted py-20">Carregando...</p>
         ) : (
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100">
-              <h2 className="font-semibold text-text-main">
-                Exames — {labelPeriodo}
-                <span className="ml-2 text-text-muted font-normal text-sm">({filtrados.length})</span>
-              </h2>
+            <div className="px-6 py-4 border-b border-gray-100 space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="font-semibold text-text-main">
+                  Exames — {labelPeriodo}
+                  <span className="ml-2 text-text-muted font-normal text-sm">
+                    {(busca || filtroPgto) && filtrados.length !== filtradosPeriodo.length
+                      ? `(${filtrados.length} de ${filtradosPeriodo.length})`
+                      : `(${filtradosPeriodo.length})`}
+                  </span>
+                </h2>
+                {(busca || filtroPgto) && (
+                  <button type="button" onClick={() => { setBusca(""); setFiltroPgto(""); }}
+                    className="text-xs text-text-muted hover:text-red-500 transition-colors">
+                    Limpar filtros
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  value={busca}
+                  onChange={e => setBusca(e.target.value)}
+                  placeholder="Buscar por paciente, clínica, serviço ou data..."
+                  className="input text-sm flex-1"
+                />
+                {pgtoOptions.length > 1 && (
+                  <select value={filtroPgto} onChange={e => setFiltroPgto(e.target.value)}
+                    className="input text-sm sm:w-36">
+                    <option value="">Pgto.: todos</option>
+                    {pgtoOptions.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                )}
+              </div>
             </div>
             {filtrados.length === 0 ? (
-              <p className="text-sm text-text-muted px-6 py-8">Nenhum exame neste período.</p>
+              <p className="text-sm text-text-muted px-6 py-8">
+                {busca || filtroPgto ? "Nenhum exame encontrado para essa busca." : "Nenhum exame neste período."}
+              </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
