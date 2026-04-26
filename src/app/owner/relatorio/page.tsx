@@ -224,6 +224,7 @@ function RelatorioContent() {
         <div style={{ borderTop: "2px solid #8B1A1A", paddingTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
           <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
             {[
+              { icon: "📱", text: "(81) 99674-1525" },
               { icon: "🌐", text: "www.imapet.com.br" },
               { icon: "✉️", text: "imapet@imapet.com.br" },
               { icon: "📷", text: "@Imapet_diagvet" },
