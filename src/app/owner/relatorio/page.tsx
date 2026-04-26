@@ -111,9 +111,10 @@ function RelatorioContent() {
         body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: #f5f5f5; }
       `}</style>
 
-      <div className="no-print" style={{ background: "#fff", borderBottom: "1px solid #e5e7eb", padding: "12px 24px", display: "flex", justifyContent: "flex-end", position: "sticky", top: 0, zIndex: 50 }}>
+      <div className="no-print" style={{ background: "#fff", borderBottom: "1px solid #e5e7eb", padding: "12px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, zIndex: 50 }}>
+        <p style={{ fontSize: 12, color: "#888", margin: 0 }}>Toque em <strong>Salvar PDF</strong> → no diálogo, escolha <strong>"Salvar como PDF"</strong></p>
         <button onClick={() => window.print()}
-          style={{ background: "#8B1A1A", color: "#fff", fontWeight: 600, padding: "10px 24px", borderRadius: 12, border: "none", cursor: "pointer", fontSize: 14, letterSpacing: "0.01em" }}>
+          style={{ background: "#8B1A1A", color: "#fff", fontWeight: 600, padding: "10px 24px", borderRadius: 12, border: "none", cursor: "pointer", fontSize: 14, letterSpacing: "0.01em", flexShrink: 0, marginLeft: 12 }}>
           Salvar PDF
         </button>
       </div>
