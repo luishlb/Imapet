@@ -15,6 +15,9 @@ type DadosEnvio = {
   tiposExame: string[];
   dataExame: string;
   laudoUrl: string;
+  nomeClinica: string;
+  emailClinica: string | null;
+  whatsappClinica: string | null;
 };
 
 function formatarCPF(v: string) {
@@ -39,10 +42,12 @@ export default function AdminPage() {
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState("");
   const [dadosEnvio, setDadosEnvio] = useState<DadosEnvio | null>(null);
-  const [emailOutra, setEmailOutra] = useState("");
-  const [mostrarOutra, setMostrarOutra] = useState(false);
   const [enviando, setEnviando] = useState<string | null>(null);
   const [enviados, setEnviados] = useState<string[]>([]);
+  const [numerosWhatsapp, setNumerosWhatsapp] = useState<string[]>([]);
+  const [whatsappEnviados, setWhatsappEnviados] = useState<number[]>([]);
+  const [emailsPersonalizados, setEmailsPersonalizados] = useState<string[]>([""]);
+  const [emailsEnviados, setEmailsEnviados] = useState<number[]>([]);
 
   const [form, setForm] = useState({
     nomeTutor: "", cpf: "", emailTutor: "", whatsappTutor: "",
@@ -207,12 +212,20 @@ export default function AdminPage() {
       });
       if (erroExame) throw new Error("Erro ao registrar o exame.");
 
+      const clinicaSel = clinicas.find(c => c.nome === form.clinica);
       setDadosEnvio({
         nomeTutor: form.nomeTutor,
         emailTutor: form.emailTutor, whatsappTutor: form.whatsappTutor,
         nomePet: form.nomePet, tiposExame,
         dataExame: form.dataExame, laudoUrl,
+        nomeClinica: form.clinica,
+        emailClinica: clinicaSel?.email ?? null,
+        whatsappClinica: clinicaSel?.whatsapp ?? null,
       });
+      setNumerosWhatsapp([""]);
+      setWhatsappEnviados([]);
+      setEmailsPersonalizados([""]);
+      setEmailsEnviados([]);
       setEtapa("envio");
       setEnviados([]);
 
@@ -241,13 +254,41 @@ export default function AdminPage() {
     setEnviando(null);
   }
 
-  function abrirWhatsApp(numero: string) {
+  function abrirWhatsApp(numero: string, indice: number) {
     if (!dadosEnvio) return;
     const num = numero.replace(/\D/g, "");
+    if (!num) return;
     const msg = encodeURIComponent(
       `Olá! Segue o laudo do paciente *${dadosEnvio.nomePet}*.\n\n📄 Acesse pelo link:\n${dadosEnvio.laudoUrl}\n\nATT, IMAPET`
     );
     window.open(`https://wa.me/55${num}?text=${msg}`, "_blank");
+    setWhatsappEnviados(prev => prev.includes(indice) ? prev : [...prev, indice]);
+  }
+
+  function abrirWhatsAppSimples(numero: string, chave: string) {
+    if (!dadosEnvio) return;
+    const num = numero.replace(/\D/g, "");
+    if (!num) return;
+    const msg = encodeURIComponent(
+      `Olá! Segue o laudo do paciente *${dadosEnvio.nomePet}*.\n\n📄 Acesse pelo link:\n${dadosEnvio.laudoUrl}\n\nATT, IMAPET`
+    );
+    window.open(`https://wa.me/55${num}?text=${msg}`, "_blank");
+    setEnviados(prev => prev.includes(chave) ? prev : [...prev, chave]);
+  }
+
+  async function enviarParaTodosEmail() {
+    const validos = emailsPersonalizados.map((e, i) => ({ e, i })).filter(({ e }) => e.trim());
+    for (const { e, i } of validos) {
+      await enviarEmail(e, "clinica", `email-custom-${i}`);
+      setEmailsEnviados(prev => prev.includes(i) ? prev : [...prev, i]);
+    }
+  }
+
+  function enviarParaTodosWhatsApp() {
+    const validos = numerosWhatsapp.map((n, i) => ({ n, i })).filter(({ n }) => n.replace(/\D/g, ""));
+    validos.forEach(({ n, i }, ordem) => {
+      setTimeout(() => abrirWhatsApp(n, i), ordem * 400);
+    });
   }
 
   function novoExame() {
@@ -260,8 +301,10 @@ export default function AdminPage() {
     setTiposExame([]);
     setArquivo(null);
     setDadosEnvio(null);
-    setEmailOutra("");
-    setMostrarOutra(false);
+    setNumerosWhatsapp([""]);
+    setWhatsappEnviados([]);
+    setEmailsPersonalizados([""]);
+    setEmailsEnviados([]);
     setEtapa("formulario");
   }
 
@@ -587,63 +630,161 @@ export default function AdminPage() {
             <p className="text-text-muted text-sm mb-6">Escolha uma ou mais opções abaixo.</p>
 
             <div className="space-y-3">
-              {clinicas.filter(c => c.email).map(c => (
-                <button key={c.id}
-                  onClick={() => enviarEmail(c.email!, "clinica", `clinica-${c.id}`, c.nome)}
-                  disabled={enviando === `clinica-${c.id}` || enviados.includes(`clinica-${c.id}`)}
-                  className={`w-full flex items-center justify-between px-5 py-4 rounded-xl border-2 transition-all text-left ${
-                    enviados.includes(`clinica-${c.id}`)
-                      ? "border-green-300 bg-green-50 text-green-700"
-                      : "border-gray-200 bg-white hover:border-primary hover:bg-primary/3"
-                  }`}>
-                  <span className="font-medium text-sm">
-                    {enviados.includes(`clinica-${c.id}`) ? "✓ Enviado para " : "📧 Enviar para "}{c.nome}
-                  </span>
-                  {enviando === `clinica-${c.id}` && <span className="text-xs text-text-muted">Enviando...</span>}
-                </button>
-              ))}
 
-              <div className="bg-white rounded-xl border-2 border-gray-200 overflow-hidden">
-                <button type="button" onClick={() => setMostrarOutra(!mostrarOutra)}
-                  className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition text-left">
-                  <span className="font-medium text-sm text-text-main">📧 Outra clínica</span>
-                  <span className="text-gray-400 text-lg">{mostrarOutra ? "−" : "+"}</span>
-                </button>
-                {mostrarOutra && (
-                  <div className="px-5 pb-4 flex gap-2">
-                    <input value={emailOutra} onChange={e => setEmailOutra(e.target.value)}
-                      type="email" placeholder="email@clinica.com.br" className="input flex-1" />
-                    <button onClick={() => enviarEmail(emailOutra, "clinica", "outra")}
-                      disabled={!emailOutra || enviando === "outra" || enviados.includes("outra")}
-                      className="bg-primary text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-primary-light transition disabled:opacity-50">
-                      {enviados.includes("outra") ? "✓" : "Enviar"}
+              {/* ── CLIENTE ── */}
+              {(dadosEnvio.emailTutor || dadosEnvio.whatsappTutor) && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-text-muted uppercase tracking-wide px-1">Para o cliente</p>
+                  {dadosEnvio.emailTutor && (
+                    <button onClick={() => enviarEmail(dadosEnvio.emailTutor, "cliente", "email-cliente")}
+                      disabled={enviando === "email-cliente" || enviados.includes("email-cliente")}
+                      className={`w-full flex items-center justify-between px-5 py-4 rounded-xl border-2 transition-all text-left ${
+                        enviados.includes("email-cliente")
+                          ? "border-green-300 bg-green-50 text-green-700"
+                          : "border-gray-200 bg-white hover:border-primary hover:bg-primary/3"
+                      }`}>
+                      <span className="font-medium text-sm">
+                        {enviados.includes("email-cliente") ? "✓ Email enviado ao cliente" : "📧 Enviar email ao cliente"}
+                      </span>
+                      {enviando === "email-cliente" && <span className="text-xs text-text-muted">Enviando...</span>}
                     </button>
+                  )}
+                  {dadosEnvio.whatsappTutor && (
+                    <button type="button" onClick={() => abrirWhatsAppSimples(dadosEnvio.whatsappTutor, "whatsapp-cliente")}
+                      className={`w-full flex items-center gap-3 px-5 py-4 rounded-xl border-2 transition text-left ${
+                        enviados.includes("whatsapp-cliente")
+                          ? "border-green-300 bg-green-50 text-green-700"
+                          : "border-gray-200 bg-white hover:border-green-400 hover:bg-green-50"
+                      }`}>
+                      <span className="text-xl">💬</span>
+                      <span className="font-medium text-sm">
+                        {enviados.includes("whatsapp-cliente") ? "✓ WhatsApp aberto para o cliente" : "Enviar WhatsApp ao cliente"}
+                      </span>
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* ── CLÍNICA SELECIONADA ── */}
+              {dadosEnvio.nomeClinica && (dadosEnvio.emailClinica || dadosEnvio.whatsappClinica) && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-text-muted uppercase tracking-wide px-1">Para a clínica</p>
+                  {dadosEnvio.emailClinica && (
+                    <button onClick={() => enviarEmail(dadosEnvio.emailClinica!, "clinica", "email-clinica", dadosEnvio.nomeClinica)}
+                      disabled={enviando === "email-clinica" || enviados.includes("email-clinica")}
+                      className={`w-full flex items-center justify-between px-5 py-4 rounded-xl border-2 transition-all text-left ${
+                        enviados.includes("email-clinica")
+                          ? "border-green-300 bg-green-50 text-green-700"
+                          : "border-gray-200 bg-white hover:border-primary hover:bg-primary/3"
+                      }`}>
+                      <span className="font-medium text-sm">
+                        {enviados.includes("email-clinica") ? `✓ Email enviado para ${dadosEnvio.nomeClinica}` : `📧 Enviar email para ${dadosEnvio.nomeClinica}`}
+                      </span>
+                      {enviando === "email-clinica" && <span className="text-xs text-text-muted">Enviando...</span>}
+                    </button>
+                  )}
+                  {dadosEnvio.whatsappClinica && (
+                    <button type="button" onClick={() => abrirWhatsAppSimples(dadosEnvio.whatsappClinica!, "whatsapp-clinica")}
+                      className={`w-full flex items-center gap-3 px-5 py-4 rounded-xl border-2 transition text-left ${
+                        enviados.includes("whatsapp-clinica")
+                          ? "border-green-300 bg-green-50 text-green-700"
+                          : "border-gray-200 bg-white hover:border-green-400 hover:bg-green-50"
+                      }`}>
+                      <span className="text-xl">💬</span>
+                      <span className="font-medium text-sm">
+                        {enviados.includes("whatsapp-clinica") ? `✓ WhatsApp aberto para ${dadosEnvio.nomeClinica}` : `Enviar WhatsApp para ${dadosEnvio.nomeClinica}`}
+                      </span>
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* ── EMAILS PERSONALIZADOS ── */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-text-muted uppercase tracking-wide px-1">Email personalizado</p>
+                <div className="bg-white rounded-xl border-2 border-gray-200 overflow-hidden">
+                  <div className="px-5 py-4 flex items-center justify-between">
+                    <span className="font-medium text-sm text-text-main">📧 Enviar por email</span>
+                    <button type="button" onClick={() => setEmailsPersonalizados(prev => [...prev, ""])}
+                      className="w-7 h-7 rounded-full bg-primary text-white font-bold flex items-center justify-center hover:bg-primary-light transition text-base leading-none"
+                      title="Adicionar email">+</button>
                   </div>
-                )}
+                  <div className="px-5 pb-4 space-y-2">
+                    {emailsPersonalizados.map((email, i) => (
+                      <div key={i} className="flex gap-2 items-center">
+                        <input type="email" value={email}
+                          onChange={e => setEmailsPersonalizados(prev => prev.map((v, j) => j === i ? e.target.value : v))}
+                          placeholder="email@exemplo.com" className="input flex-1 text-sm" />
+                        <button type="button"
+                          onClick={async () => {
+                            await enviarEmail(email, "clinica", `email-custom-${i}`);
+                            setEmailsEnviados(prev => prev.includes(i) ? prev : [...prev, i]);
+                          }}
+                          disabled={!email.trim() || enviando === `email-custom-${i}` || emailsEnviados.includes(i)}
+                          className={`px-3 py-2 rounded-xl text-sm font-medium transition disabled:opacity-40 ${
+                            emailsEnviados.includes(i) ? "bg-green-100 text-green-700" : "bg-primary text-white hover:bg-primary-light"
+                          }`}>
+                          {emailsEnviados.includes(i) ? "✓" : "Enviar"}
+                        </button>
+                        {emailsPersonalizados.length > 1 && (
+                          <button type="button"
+                            onClick={() => setEmailsPersonalizados(prev => prev.filter((_, j) => j !== i))}
+                            className="text-gray-300 hover:text-red-400 transition text-xl leading-none">×</button>
+                        )}
+                      </div>
+                    ))}
+                    {emailsPersonalizados.filter(e => e.trim()).length > 1 && (
+                      <button type="button" onClick={enviarParaTodosEmail}
+                        className="w-full mt-1 bg-primary hover:bg-primary-light text-white font-medium py-2.5 rounded-xl text-sm transition">
+                        📧 Enviar para todos ({emailsPersonalizados.filter(e => e.trim()).length})
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              {dadosEnvio.emailTutor && (
-                <button onClick={() => enviarEmail(dadosEnvio.emailTutor, "cliente", "cliente")}
-                  disabled={enviando === "cliente" || enviados.includes("cliente")}
-                  className={`w-full flex items-center justify-between px-5 py-4 rounded-xl border-2 transition-all text-left ${
-                    enviados.includes("cliente")
-                      ? "border-green-300 bg-green-50 text-green-700"
-                      : "border-gray-200 bg-white hover:border-primary hover:bg-primary/3"
-                  }`}>
-                  <span className="font-medium text-sm">
-                    {enviados.includes("cliente") ? "✓ Enviado para o cliente" : "📧 Enviar para o cliente"}
-                  </span>
-                  {enviando === "cliente" && <span className="text-xs text-text-muted">Enviando...</span>}
-                </button>
-              )}
+              {/* ── WHATSAPP PERSONALIZADOS ── */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-text-muted uppercase tracking-wide px-1">WhatsApp personalizado</p>
+                <div className="bg-white rounded-xl border-2 border-gray-200 overflow-hidden">
+                  <div className="px-5 py-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">💬</span>
+                      <span className="font-medium text-sm text-text-main">Enviar pelo WhatsApp</span>
+                    </div>
+                    <button type="button" onClick={() => setNumerosWhatsapp(prev => [...prev, ""])}
+                      className="w-7 h-7 rounded-full bg-primary text-white font-bold flex items-center justify-center hover:bg-primary-light transition text-base leading-none"
+                      title="Adicionar número">+</button>
+                  </div>
+                  <div className="px-5 pb-4 space-y-2">
+                    {numerosWhatsapp.map((num, i) => (
+                      <div key={i} className="flex gap-2 items-center">
+                        <input type="tel" value={num}
+                          onChange={e => setNumerosWhatsapp(prev => prev.map((n, j) => j === i ? e.target.value : n))}
+                          placeholder="(81) 99999-9999" inputMode="numeric" className="input flex-1 text-sm" />
+                        <button type="button" onClick={() => abrirWhatsApp(num, i)} disabled={!num.trim()}
+                          className={`px-3 py-2 rounded-xl text-sm font-medium transition disabled:opacity-40 ${
+                            whatsappEnviados.includes(i) ? "bg-green-100 text-green-700" : "bg-green-500 text-white hover:bg-green-600"
+                          }`}>
+                          {whatsappEnviados.includes(i) ? "✓" : "Enviar"}
+                        </button>
+                        {numerosWhatsapp.length > 1 && (
+                          <button type="button"
+                            onClick={() => setNumerosWhatsapp(prev => prev.filter((_, j) => j !== i))}
+                            className="text-gray-300 hover:text-red-400 transition text-xl leading-none">×</button>
+                        )}
+                      </div>
+                    ))}
+                    {numerosWhatsapp.filter(n => n.trim()).length > 1 && (
+                      <button type="button" onClick={enviarParaTodosWhatsApp}
+                        className="w-full mt-1 bg-green-500 hover:bg-green-600 text-white font-medium py-2.5 rounded-xl text-sm transition">
+                        💬 Enviar para todos ({numerosWhatsapp.filter(n => n.trim()).length})
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
 
-              {dadosEnvio.whatsappTutor && (
-                <button onClick={() => abrirWhatsApp(dadosEnvio.whatsappTutor)}
-                  className="w-full flex items-center gap-3 px-5 py-4 rounded-xl border-2 border-gray-200 bg-white hover:border-green-400 hover:bg-green-50 transition text-left">
-                  <span className="text-xl">💬</span>
-                  <span className="font-medium text-sm">Compartilhar pelo WhatsApp</span>
-                </button>
-              )}
             </div>
 
             <button onClick={novoExame}
