@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type jsPDFType from "jspdf";
 import { moeda, dataFmt, ultimoDiaMes, formatarPagamento, valorExtenso } from "@/lib/utils";
 
 const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+const HOJE = new Date();
 
 type Exame = {
   id: string;
@@ -18,14 +19,32 @@ type Exame = {
   pets: { nome: string; raca: string | null } | null;
 };
 
-function RelatorioContent() {
-  const params = useSearchParams();
-  const mes = Number(params.get("mes")) || new Date().getMonth() + 1;
-  const ano = Number(params.get("ano")) || new Date().getFullYear();
-
+export default function RelatorioPage() {
+  const [mes, setMes] = useState(HOJE.getMonth() + 1);
+  const [ano, setAno] = useState(HOJE.getFullYear());
   const [exames, setExames] = useState<Exame[]>([]);
-  const [carregando, setCarregando] = useState(true);
+  const [gerado, setGerado] = useState(false);
+  const [carregando, setCarregando] = useState(false);
   const [gerando, setGerando] = useState(false);
+
+  const anos = [2024, 2025, 2026, 2027];
+
+  async function gerar() {
+    setCarregando(true);
+    const supabase = createClient();
+    const mesStr = String(mes).padStart(2, "0");
+    const ultimo = String(ultimoDiaMes(mes, ano)).padStart(2, "0");
+    const { data } = await supabase
+      .from("exames")
+      .select("id, data_exame, tipo, forma_pagamento, valor_bruto, nome_paciente, pets(nome, raca)")
+      .eq("clinica", "Cia do Animal")
+      .gte("data_exame", `${ano}-${mesStr}-01`)
+      .lte("data_exame", `${ano}-${mesStr}-${ultimo}`)
+      .order("data_exame");
+    setExames((data as unknown as Exame[]) || []);
+    setCarregando(false);
+    setGerado(true);
+  }
 
   async function gerarPDF() {
     setGerando(true);
@@ -47,40 +66,60 @@ function RelatorioContent() {
         pdf.addImage(imgData, "PNG", 0, -y, pw, imgH);
         y += ph;
       }
-      const mesNomeArq = MESES[mes - 1].toLowerCase();
-      pdf.save(`relatorio-cia-do-animal-${mesNomeArq}-${ano}.pdf`);
+      pdf.save(`relatorio-cia-do-animal-${MESES[mes - 1].toLowerCase()}-${ano}.pdf`);
     } finally {
       setGerando(false);
     }
   }
 
-  useEffect(() => {
-    const supabase = createClient();
-    const mesStr = String(mes).padStart(2, "0");
-    const ultimo = String(ultimoDiaMes(mes, ano)).padStart(2, "0");
-    supabase
-      .from("exames")
-      .select("id, data_exame, tipo, forma_pagamento, valor_bruto, nome_paciente, pets(nome, raca)")
-      .eq("clinica", "Cia do Animal")
-      .gte("data_exame", `${ano}-${mesStr}-01`)
-      .lte("data_exame", `${ano}-${mesStr}-${ultimo}`)
-      .order("data_exame")
-      .then(({ data }) => {
-        setExames((data as unknown as Exame[]) || []);
-        setCarregando(false);
-      });
-  }, [mes, ano]);
+  // ── Tela de seleção ───────────────────────────────────────────────────────
+  if (!gerado) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="bg-white border-b border-gray-100 px-6 py-4 flex items-center gap-4 sticky top-0 z-10">
+          <Link href="/owner" className="text-sm text-text-muted hover:text-primary transition-colors">← Voltar</Link>
+          <span className="text-sm font-semibold text-text-main">Relatório Cia do Animal</span>
+        </header>
+        <main className="max-w-sm mx-auto px-4 py-16">
+          <div className="bg-white rounded-2xl p-8 shadow-sm space-y-6">
+            <div>
+              <h1 className="font-playfair text-2xl font-bold text-text-main">Gerar relatório</h1>
+              <p className="text-sm text-text-muted mt-1">Selecione o período</p>
+            </div>
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-text-muted mb-1.5">Mês</label>
+                <select value={mes} onChange={e => setMes(Number(e.target.value))} className="input text-sm">
+                  {MESES.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-text-muted mb-1.5">Ano</label>
+                <select value={ano} onChange={e => setAno(Number(e.target.value))} className="input text-sm">
+                  {anos.map(a => <option key={a} value={a}>{a}</option>)}
+                </select>
+              </div>
+            </div>
+            <button
+              onClick={gerar}
+              disabled={carregando}
+              className="w-full bg-primary hover:bg-primary-light text-white font-semibold py-3 rounded-xl transition-all disabled:opacity-50"
+            >
+              {carregando ? "Carregando..." : "Gerar relatório"}
+            </button>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
+  // ── Relatório gerado ──────────────────────────────────────────────────────
   const totalPendente = exames.reduce((s, e) =>
     formatarPagamento(e.forma_pagamento) === "Pendente" ? s + (e.valor_bruto || 0) : s, 0);
 
   const ultimoDia = ultimoDiaMes(mes, ano);
   const dataFimStr = `${String(ultimoDia).padStart(2,"0")}/${String(mes).padStart(2,"0")}/${ano}`;
   const mesNome = MESES[mes - 1];
-
-  if (carregando) {
-    return <div style={{ display:"flex", alignItems:"center", justifyContent:"center", minHeight:"100vh", color:"#999", fontSize:14 }}>Carregando...</div>;
-  }
 
   return (
     <>
@@ -100,8 +139,19 @@ function RelatorioContent() {
           top: 0;
           z-index: 100;
         }
-        .toolbar p { margin: 0; font-size: 12px; color: #888; flex: 1; }
-        .toolbar button {
+        .toolbar-left { display: flex; align-items: center; gap: 12px; }
+        .toolbar-back {
+          background: none;
+          border: 1px solid #ddd;
+          color: #666;
+          padding: 8px 16px;
+          border-radius: 10px;
+          font-size: 13px;
+          cursor: pointer;
+        }
+        .toolbar-back:hover { border-color: #8B1A1A; color: #8B1A1A; }
+        .toolbar-label { font-size: 13px; color: #888; }
+        .toolbar-download {
           background: #8B1A1A;
           color: #fff;
           border: none;
@@ -112,6 +162,7 @@ function RelatorioContent() {
           cursor: pointer;
           white-space: nowrap;
         }
+        .toolbar-download:disabled { opacity: 0.7; cursor: not-allowed; }
 
         .page {
           width: 210mm;
@@ -210,22 +261,23 @@ function RelatorioContent() {
         }
       `}</style>
 
-      {/* Toolbar — hidden on print */}
       <div className="toolbar">
+        <div className="toolbar-left">
+          <button className="toolbar-back" onClick={() => setGerado(false)}>← Trocar período</button>
+          <span className="toolbar-label">{mesNome} {ano}</span>
+        </div>
         <button
+          className="toolbar-download"
           onClick={gerarPDF}
           disabled={gerando}
-          style={{ background: "#8B1A1A", color: "#fff", border: "none", padding: "10px 22px", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: gerando ? "not-allowed" : "pointer", opacity: gerando ? 0.7 : 1 }}
         >
           {gerando ? "Gerando PDF..." : "⬇ Baixar PDF"}
         </button>
       </div>
 
-      {/* Scroll wrapper for small screens */}
       <div className="page-scroll">
         <div className="page" id="relatorio-doc">
 
-          {/* Header */}
           <div className="header">
             <img src="/Logomarca/57423_Imapet_040521_aa-01.png" alt="IMAPET" style={{ height: 70 }} />
             <div className="header-right">
@@ -237,13 +289,11 @@ function RelatorioContent() {
           <div className="stripe1" />
           <div className="stripe2" />
 
-          {/* Título */}
           <div className="title">
             <h1>Relação de Exames — Cia do Animal</h1>
             <p>Período: {mesNome} de {ano} &nbsp;·&nbsp; Emitido em {new Date().toLocaleDateString("pt-BR")}</p>
           </div>
 
-          {/* Tabela */}
           <table>
             <colgroup>
               <col className="col-data" />
@@ -284,7 +334,6 @@ function RelatorioContent() {
             </tbody>
           </table>
 
-          {/* Totais */}
           <div className="totais">
             <div className="totais-left">
               <p className="totais-label">Valor total pendente em {dataFimStr}</p>
@@ -293,7 +342,6 @@ function RelatorioContent() {
             <p className="totais-valor">{moeda(totalPendente)}</p>
           </div>
 
-          {/* Assinatura */}
           <div className="assinatura">
             <div className="assinatura-inner">
               <img src="/assinatura.png" alt="Assinatura" />
@@ -305,7 +353,6 @@ function RelatorioContent() {
             </div>
           </div>
 
-          {/* Footer */}
           <div className="footer">
             <div className="footer-contacts">
               {[
@@ -325,13 +372,5 @@ function RelatorioContent() {
         </div>
       </div>
     </>
-  );
-}
-
-export default function RelatorioPage() {
-  return (
-    <Suspense fallback={<div style={{ display:"flex", alignItems:"center", justifyContent:"center", minHeight:"100vh", color:"#999", fontSize:14 }}>Carregando...</div>}>
-      <RelatorioContent />
-    </Suspense>
   );
 }
