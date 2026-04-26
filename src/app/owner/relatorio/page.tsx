@@ -91,7 +91,6 @@ function RelatorioContent() {
 
   const totalPendente = exames.reduce((s, e) =>
     formatarPagamento(e.forma_pagamento) === "Pendente" ? s + (e.valor_bruto || 0) : s, 0);
-  const totalGeral = exames.reduce((s, e) => s + (e.valor_bruto || 0), 0);
 
   const ultimoDia = ultimoDiaMes(mes, ano);
   const dataFimStr = `${String(ultimoDia).padStart(2,"0")}/${String(mes).padStart(2,"0")}/${ano}`;
@@ -231,7 +230,7 @@ function RelatorioContent() {
 
       {/* Toolbar — hidden on print */}
       <div className="toolbar">
-        <p>Para salvar: toque em <strong>Imprimir PDF</strong> e escolha <strong>"Salvar como PDF"</strong> no diálogo</p>
+        <p>Para salvar: toque em <strong>Imprimir PDF</strong> e escolha <strong>&ldquo;Salvar como PDF&rdquo;</strong> no diálogo</p>
         <button onClick={() => window.print()}>🖨 Imprimir PDF</button>
       </div>
 
