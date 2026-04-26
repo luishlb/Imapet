@@ -96,6 +96,20 @@ function RelatorioContent() {
   const dataFimStr = `${String(ultimoDia).padStart(2,"0")}/${String(mes).padStart(2,"0")}/${ano}`;
   const mesNome = MESES[mes - 1];
 
+  const [copiado, setCopiado] = useState(false);
+
+  async function compartilhar() {
+    const url = window.location.href;
+    const titulo = `Relação de exames — Cia do Animal — ${mesNome} ${ano}`;
+    if (navigator.share) {
+      await navigator.share({ title: titulo, url });
+    } else {
+      await navigator.clipboard.writeText(url);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2500);
+    }
+  }
+
   if (carregando) {
     return <div className="flex items-center justify-center min-h-screen text-gray-400 text-sm">Carregando...</div>;
   }
@@ -116,8 +130,12 @@ function RelatorioContent() {
           className="bg-primary text-white font-semibold px-5 py-2 rounded-xl shadow-md hover:bg-primary-light transition text-sm">
           Imprimir / Salvar PDF
         </button>
+        <button onClick={compartilhar}
+          className="bg-white border border-gray-200 font-semibold px-5 py-2 rounded-xl shadow-md hover:border-primary hover:text-primary transition text-sm text-text-muted flex items-center gap-2">
+          {copiado ? "✓ Link copiado!" : "Compartilhar"}
+        </button>
         <button onClick={() => window.close()}
-          className="bg-white border border-gray-200 text-text-muted font-medium px-4 py-2 rounded-xl text-sm hover:border-gray-400 transition">
+          className="bg-white border border-gray-200 text-text-muted font-medium px-4 py-2 rounded-xl shadow-md text-sm hover:border-gray-400 transition">
           Fechar
         </button>
       </div>
