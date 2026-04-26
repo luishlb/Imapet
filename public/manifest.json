@@ -9,10 +9,10 @@
   "theme_color": "#8B1A1A",
   "icons": [
     {
-      "src": "/Logomarca/imapet.png",
+      "src": "/Logomarca/57423_Imapet_040521_aa-01.png",
       "sizes": "any",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }
