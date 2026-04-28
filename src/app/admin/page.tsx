@@ -261,7 +261,7 @@ export default function AdminPage() {
     const msg = encodeURIComponent(
       `Olá! Segue o laudo do paciente *${dadosEnvio.nomePet}*.\n\n📄 Acesse pelo link:\n${dadosEnvio.laudoUrl}\n\nATT, IMAPET`
     );
-    window.open(`https://wa.me/55${num}?text=${msg}`, "_blank");
+    window.open(`https://web.whatsapp.com/send?phone=55${num}&text=${msg}`, "_blank");
     setWhatsappEnviados(prev => prev.includes(indice) ? prev : [...prev, indice]);
   }
 
@@ -272,7 +272,7 @@ export default function AdminPage() {
     const msg = encodeURIComponent(
       `Olá! Segue o laudo do paciente *${dadosEnvio.nomePet}*.\n\n📄 Acesse pelo link:\n${dadosEnvio.laudoUrl}\n\nATT, IMAPET`
     );
-    window.open(`https://wa.me/55${num}?text=${msg}`, "_blank");
+    window.open(`https://web.whatsapp.com/send?phone=55${num}&text=${msg}`, "_blank");
     setEnviados(prev => prev.includes(chave) ? prev : [...prev, chave]);
   }
 
