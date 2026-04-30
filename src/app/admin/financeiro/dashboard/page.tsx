@@ -278,6 +278,7 @@ export default function DashboardPage() {
           <Link href="/admin/financeiro" className="text-sm font-medium px-4 py-2 rounded-xl border border-gray-200 text-text-muted hover:border-primary hover:text-primary transition-colors">Tabela</Link>
           <span className="text-sm font-semibold px-4 py-2 rounded-xl bg-primary text-white">Dashboard</span>
           <Link href="/admin/veterinaria" className="text-sm font-medium px-4 py-2 rounded-xl border border-gray-200 text-text-muted hover:border-primary hover:text-primary transition-colors">Meu pagamento</Link>
+          <Link href="/admin/pendentes" className="text-sm font-medium px-4 py-2 rounded-xl border border-gray-200 text-text-muted hover:border-primary hover:text-primary transition-colors">Pendentes</Link>
           <Link href="/admin" className="text-sm font-medium px-4 py-2 rounded-xl border border-gray-200 text-text-muted hover:border-primary hover:text-primary transition-colors">+ Novo exame</Link>
         </div>
       </header>

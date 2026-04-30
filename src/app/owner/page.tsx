@@ -8,6 +8,7 @@ const SENHA = process.env.NEXT_PUBLIC_OWNER_PASSWORD || "imapet2024";
 
 const MODULES = [
   { href: "/owner/dashboard",    icon: "📊", title: "Dashboard financeiro",      desc: "Faturamento, gráficos e insights" },
+  { href: "/owner/pendentes",    icon: "💳", title: "Pagamentos pendentes",      desc: "Conferir e marcar como recebido" },
   { href: "/owner/veterinaria",  icon: "🩺", title: "Pagamento veterinária",     desc: "Calcular por quinzena ou mês" },
   { href: "/owner/exames",       icon: "📋", title: "Tabela de exames",          desc: "Buscar, filtrar e excluir registros" },
   { href: "/owner/despesas",     icon: "💸", title: "Despesas",                  desc: "Lançar e consultar gastos" },

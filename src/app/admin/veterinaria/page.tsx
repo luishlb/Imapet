@@ -76,6 +76,7 @@ export default function VeterinariaAdminPage() {
           <Link href="/admin/financeiro" className="text-sm font-medium px-4 py-2 rounded-xl border border-gray-200 text-text-muted hover:border-primary hover:text-primary transition-colors">Tabela</Link>
           <Link href="/admin/financeiro/dashboard" className="text-sm font-medium px-4 py-2 rounded-xl border border-gray-200 text-text-muted hover:border-primary hover:text-primary transition-colors">Dashboard</Link>
           <span className="text-sm font-semibold px-4 py-2 rounded-xl bg-primary text-white">Meu pagamento</span>
+          <Link href="/admin/pendentes" className="text-sm font-medium px-4 py-2 rounded-xl border border-gray-200 text-text-muted hover:border-primary hover:text-primary transition-colors">Pendentes</Link>
           <Link href="/admin" className="text-sm font-medium px-4 py-2 rounded-xl border border-gray-200 text-text-muted hover:border-primary hover:text-primary transition-colors">+ Novo exame</Link>
         </div>
       </header>
