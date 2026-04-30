@@ -36,9 +36,15 @@ export default function VeterinariaPage() {
   const [exames, setExames] = useState<Exame[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [calculado, setCalculado] = useState(false);
+  const [desconto, setDesconto] = useState("");
 
   const totalBruto = useMemo(() => exames.reduce((s, e) => s + (e.valor_bruto || 0), 0), [exames]);
   const totalVet = useMemo(() => Math.round(totalBruto * 0.42 * 100) / 100, [totalBruto]);
+  const valorDesconto = useMemo(() => {
+    const v = parseFloat(desconto.replace(",", "."));
+    return isNaN(v) || v < 0 ? 0 : v;
+  }, [desconto]);
+  const liquido = useMemo(() => Math.max(0, Math.round((totalVet - valorDesconto) * 100) / 100), [totalVet, valorDesconto]);
 
   const labelPeriodo = useMemo(() => {
     const m = MESES[mesPgto - 1];
@@ -52,6 +58,7 @@ export default function VeterinariaPage() {
   async function calcular() {
     setCarregando(true);
     setCalculado(false);
+    setDesconto("");
     const supabase = createClient();
     const mesStr = String(mesPgto).padStart(2, "0");
     let dataInicio: string, dataFim: string;
@@ -130,15 +137,41 @@ export default function VeterinariaPage() {
 
             {calculado && (
               <div className="space-y-3">
-                <div className="bg-primary/5 rounded-xl px-5 py-4 flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-text-muted">{labelPeriodo}</p>
-                    <p className="text-sm font-medium text-text-main mt-0.5">{exames.length} exame{exames.length !== 1 ? "s" : ""}</p>
+                <div className="bg-primary/5 rounded-xl px-5 py-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-text-muted">{labelPeriodo}</p>
+                      <p className="text-sm font-medium text-text-main mt-0.5">{exames.length} exame{exames.length !== 1 ? "s" : ""} · Bruto {moeda(totalBruto)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-text-muted mb-1">Vet. 42%</p>
+                      <p className="text-lg font-semibold text-text-main">{moeda(totalVet)}</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs text-text-muted mb-1">A pagar (42%)</p>
-                    <p className="text-2xl font-bold text-primary">{moeda(totalVet)}</p>
-                    <p className="text-xs text-text-muted mt-0.5">Bruto: {moeda(totalBruto)}</p>
+
+                  <div className="flex items-center justify-between border-t border-primary/10 pt-3">
+                    <label htmlFor="desconto" className="text-xs text-text-muted">
+                      Adiantamento <span className="text-gray-400">(opcional)</span>
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-text-muted">R$</span>
+                      <input
+                        id="desconto"
+                        type="number"
+                        inputMode="decimal"
+                        step="0.01"
+                        min="0"
+                        value={desconto}
+                        onChange={e => setDesconto(e.target.value)}
+                        placeholder="0,00"
+                        className="input text-sm py-1.5 w-28 text-right"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between border-t border-primary/10 pt-3">
+                    <p className="text-sm font-semibold text-text-main">Líquido a pagar</p>
+                    <p className="text-2xl font-bold text-primary">{moeda(liquido)}</p>
                   </div>
                 </div>
 
