@@ -11,7 +11,7 @@ type ExamePendente = {
   clinica: string | null;
   valor_bruto: number | null;
   nome_paciente: string | null;
-  pets: { nome: string } | null;
+  pets: { nome: string; especie: string | null; raca: string | null } | null;
 };
 
 export default function PagamentosPendentes() {
@@ -26,7 +26,7 @@ export default function PagamentosPendentes() {
     const supabase = createClient();
     Promise.all([
       supabase.from("exames")
-        .select("id, data_exame, tipo, clinica, valor_bruto, nome_paciente, pets(nome)")
+        .select("id, data_exame, tipo, clinica, valor_bruto, nome_paciente, pets(nome, especie, raca)")
         .eq("forma_pagamento", "Pendente")
         .order("data_exame", { ascending: true }),
       supabase.from("formas_pagamento").select("nome").order("id"),
@@ -107,6 +107,8 @@ export default function PagamentosPendentes() {
                   <tr className="text-[10px] text-text-muted uppercase tracking-wider bg-gray-50 border-b border-gray-100">
                     <th className="text-left px-3 py-3 whitespace-nowrap">Data</th>
                     <th className="text-left px-3 py-3">Paciente</th>
+                    <th className="text-left px-3 py-3">Espécie</th>
+                    <th className="text-left px-3 py-3">Raça</th>
                     <th className="text-left px-3 py-3">Serviço</th>
                     <th className="text-right px-3 py-3">Valor</th>
                     <th className="px-3 py-3"></th>
@@ -121,6 +123,8 @@ export default function PagamentosPendentes() {
                         <tr className="hover:bg-gray-50 transition-colors">
                           <td className="px-3 py-2 text-text-muted whitespace-nowrap">{dataFmt(e.data_exame)}</td>
                           <td className="px-3 py-2 font-medium text-text-main">{paciente}</td>
+                          <td className="px-3 py-2 text-text-muted">{e.pets?.especie || "—"}</td>
+                          <td className="px-3 py-2 text-text-muted">{e.pets?.raca || "—"}</td>
                           <td className="px-3 py-2 text-text-muted">{e.tipo || "—"}</td>
                           <td className="px-3 py-2 text-right font-semibold text-text-main">{e.valor_bruto ? moeda(e.valor_bruto) : "—"}</td>
                           <td className="px-3 py-2 text-right whitespace-nowrap">
@@ -136,7 +140,7 @@ export default function PagamentosPendentes() {
                         </tr>
                         {ehMarcando && (
                           <tr className="bg-primary/5">
-                            <td colSpan={5} className="px-3 py-3">
+                            <td colSpan={7} className="px-3 py-3">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-xs text-text-muted">Recebido como:</span>
                                 <select
