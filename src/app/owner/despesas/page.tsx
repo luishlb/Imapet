@@ -161,7 +161,7 @@ export default function DespesasOwnerPage() {
                       </td>
                       <td className="px-3 py-2 text-center">
                         <button onClick={() => apagarDespesa(d.id)}
-                          className="text-gray-300 hover:text-red-500 transition-colors text-base leading-none" title="Apagar">🗑</button>
+                          className="text-red-400 hover:text-red-600 hover:bg-red-50 px-2 py-1 rounded-lg transition-colors text-base leading-none" title="Apagar despesa">🗑</button>
                       </td>
                     </tr>
                   ))}
