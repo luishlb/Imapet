@@ -190,7 +190,7 @@ export default function ExamesPage() {
                       <td className="px-3 py-2 text-right text-text-muted">{e.valor_bruto ? moeda(e.valor_bruto) : "—"}</td>
                       <td className="px-3 py-2 text-center">
                         <button onClick={() => apagarExame(e.id)}
-                          className="text-gray-300 hover:text-red-500 transition-colors text-base leading-none" title="Apagar">🗑</button>
+                          className="text-red-400 hover:text-red-600 hover:bg-red-50 px-2 py-1 rounded-lg transition-colors text-base leading-none" title="Apagar exame">🗑</button>
                       </td>
                     </tr>
                   ))}
