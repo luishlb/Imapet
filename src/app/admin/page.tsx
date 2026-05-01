@@ -51,7 +51,7 @@ export default function AdminPage() {
 
   const [form, setForm] = useState({
     nomeTutor: "", cpf: "", emailTutor: "", whatsappTutor: "",
-    nomePet: "", especie: "Cão", raca: "",
+    nomePet: "", especie: "Canino", raca: "",
     dataExame: new Date().toISOString().split("T")[0],
     clinica: "", formaPagamento: "", preco: "", desconto: "", observacoes: "",
   });
@@ -287,7 +287,7 @@ export default function AdminPage() {
   function novoExame() {
     setForm({
       nomeTutor: "", cpf: "", emailTutor: "", whatsappTutor: "",
-      nomePet: "", especie: "Cão", raca: "",
+      nomePet: "", especie: "Canino", raca: "",
       dataExame: new Date().toISOString().split("T")[0],
       clinica: "", formaPagamento: formasPagamento[0] || "", preco: "", desconto: "", observacoes: "",
     });
@@ -361,8 +361,8 @@ export default function AdminPage() {
                   <div>
                     <label className="block text-xs font-medium text-text-muted mb-1.5">Espécie</label>
                     <select name="especie" value={form.especie} onChange={handleChange} className="input">
-                      <option>Cão</option>
-                      <option>Gato</option>
+                      <option>Canino</option>
+                      <option>Felino</option>
                       <option>Outro</option>
                     </select>
                   </div>

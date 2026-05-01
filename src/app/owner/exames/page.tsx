@@ -19,7 +19,7 @@ type Exame = {
   forma_pagamento: string | null;
   valor_bruto: number | null;
   nome_paciente: string | null;
-  pets: { nome: string } | null;
+  pets: { nome: string; especie: string | null; raca: string | null } | null;
 };
 
 async function fetchTodos(): Promise<Exame[]> {
@@ -28,7 +28,7 @@ async function fetchTodos(): Promise<Exame[]> {
   while (true) {
     const { data } = await supabase
       .from("exames")
-      .select("id, data_exame, tipo, clinica, forma_pagamento, valor_bruto, nome_paciente, pets(nome)")
+      .select("id, data_exame, tipo, clinica, forma_pagamento, valor_bruto, nome_paciente, pets(nome, especie, raca)")
       .order("data_exame", { ascending: false })
       .range(from, from + 999);
     if (!data || data.length === 0) break;
@@ -168,6 +168,8 @@ export default function ExamesPage() {
                   <tr className="text-[10px] text-text-muted uppercase tracking-wider bg-gray-50 border-b border-gray-100">
                     <th className="text-left px-3 py-2.5 whitespace-nowrap">Data</th>
                     <th className="text-left px-3 py-2.5">Paciente</th>
+                    <th className="text-left px-3 py-2.5">Espécie</th>
+                    <th className="text-left px-3 py-2.5">Raça</th>
                     <th className="text-left px-3 py-2.5">Clínica</th>
                     <th className="text-left px-3 py-2.5">Serviço</th>
                     <th className="text-left px-3 py-2.5">Pgto.</th>
@@ -180,6 +182,8 @@ export default function ExamesPage() {
                     <tr key={e.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-3 py-2 text-text-muted whitespace-nowrap">{dataFmt(e.data_exame)}</td>
                       <td className="px-3 py-2 font-medium text-text-main">{e.nome_paciente || e.pets?.nome || "—"}</td>
+                      <td className="px-3 py-2 text-text-muted">{e.pets?.especie || "—"}</td>
+                      <td className="px-3 py-2 text-text-muted">{e.pets?.raca || "—"}</td>
                       <td className="px-3 py-2 text-text-muted">{e.clinica || "—"}</td>
                       <td className="px-3 py-2 text-text-muted">{e.tipo || "—"}</td>
                       <td className="px-3 py-2 text-text-muted">{e.forma_pagamento || "—"}</td>
