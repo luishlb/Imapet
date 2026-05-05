@@ -224,7 +224,7 @@ export default function ExamesPage() {
                         <div className="flex items-center justify-center gap-1">
                           {e.laudo_url && (
                             <button onClick={() => setReenviandoId(e.id)}
-                              className="text-text-muted hover:text-primary hover:bg-primary/10 px-2 py-1 rounded-lg transition-colors text-sm leading-none"
+                              className="inline-flex items-center px-2 py-1 rounded-lg bg-blue-50 text-blue-700 text-[11px] font-medium hover:bg-blue-100 transition-colors"
                               title="Reenviar laudo">📤</button>
                           )}
                           <button onClick={() => setEditando(e)}
