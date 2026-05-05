@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { moeda, dataFmt } from "@/lib/utils";
 import { logDelete } from "@/lib/auditLog";
 import EditarExameModal, { type ExameEditavel } from "@/components/shared/EditarExameModal";
+import ReenviarLaudoModal from "@/components/shared/ReenviarLaudoModal";
 
 const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 const HOJE = new Date();
@@ -48,6 +49,7 @@ export default function ExamesPage() {
   const [exames, setExames] = useState<Exame[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [editando, setEditando] = useState<Exame | null>(null);
+  const [reenviandoId, setReenviandoId] = useState<string | null>(null);
 
   function aplicarEdicao(atualizado: ExameEditavel) {
     setExames(prev => prev.map(x => x.id === atualizado.id ? ({ ...x, ...atualizado } as Exame) : x));
@@ -220,6 +222,11 @@ export default function ExamesPage() {
                       <td className="px-3 py-2 text-right text-text-muted">{e.valor_bruto ? moeda(e.valor_bruto) : "—"}</td>
                       <td className="px-3 py-2 whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1">
+                          {e.laudo_url && (
+                            <button onClick={() => setReenviandoId(e.id)}
+                              className="text-text-muted hover:text-primary hover:bg-primary/10 px-2 py-1 rounded-lg transition-colors text-sm leading-none"
+                              title="Reenviar laudo">📤</button>
+                          )}
                           <button onClick={() => setEditando(e)}
                             className="text-text-muted hover:text-primary hover:bg-primary/10 px-2 py-1 rounded-lg transition-colors text-sm leading-none"
                             title="Editar exame">✏️</button>
@@ -243,6 +250,13 @@ export default function ExamesPage() {
           origem="owner"
           onClose={() => setEditando(null)}
           onSaved={aplicarEdicao}
+        />
+      )}
+
+      {reenviandoId && (
+        <ReenviarLaudoModal
+          exameId={reenviandoId}
+          onClose={() => setReenviandoId(null)}
         />
       )}
     </div>

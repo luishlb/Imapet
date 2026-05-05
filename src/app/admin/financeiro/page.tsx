@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { moeda, dataFmt } from "@/lib/utils";
 import { logDelete } from "@/lib/auditLog";
 import EditarExameModal, { type ExameEditavel } from "@/components/shared/EditarExameModal";
+import ReenviarLaudoModal from "@/components/shared/ReenviarLaudoModal";
 
 type Exame = {
   id: string;
@@ -60,6 +61,7 @@ export default function FinanceiroPage() {
   const [exames, setExames] = useState<Exame[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [editando, setEditando] = useState<Exame | null>(null);
+  const [reenviandoId, setReenviandoId] = useState<string | null>(null);
 
   async function apagarExame(e: Exame) {
     if (!window.confirm(`Apagar exame de ${e.pets?.nome || e.nome_paciente || "—"} (${dataFmt(e.data_exame)})?`)) return;
@@ -259,6 +261,11 @@ export default function FinanceiroPage() {
                                 className="inline-flex items-center px-2 py-1 rounded-lg bg-primary/10 text-primary text-[11px] font-medium hover:bg-primary/20 transition-colors"
                                 title="Ver laudo">📄</a>
                             )}
+                            {e.laudo_url && (
+                              <button onClick={() => setReenviandoId(e.id)}
+                                className="text-text-muted hover:text-primary hover:bg-primary/10 px-2 py-1 rounded-lg transition-colors text-sm leading-none"
+                                title="Reenviar laudo">📤</button>
+                            )}
                             <button onClick={() => setEditando(e)}
                               className="text-text-muted hover:text-primary hover:bg-primary/10 px-2 py-1 rounded-lg transition-colors text-sm leading-none"
                               title="Editar exame">✏️</button>
@@ -283,6 +290,13 @@ export default function FinanceiroPage() {
           origem="admin"
           onClose={() => setEditando(null)}
           onSaved={aplicarEdicao}
+        />
+      )}
+
+      {reenviandoId && (
+        <ReenviarLaudoModal
+          exameId={reenviandoId}
+          onClose={() => setReenviandoId(null)}
         />
       )}
     </div>
