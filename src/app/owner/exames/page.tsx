@@ -21,6 +21,7 @@ type Exame = {
   forma_pagamento: string | null;
   valor_bruto: number | null;
   nome_paciente: string | null;
+  laudo_url: string | null;
   pets: { nome: string; especie: string | null; raca: string | null } | null;
 };
 
@@ -30,7 +31,7 @@ async function fetchTodos(): Promise<Exame[]> {
   while (true) {
     const { data } = await supabase
       .from("exames")
-      .select("id, data_exame, tipo, clinica, forma_pagamento, valor_bruto, nome_paciente, pets(nome, especie, raca)")
+      .select("id, data_exame, tipo, clinica, forma_pagamento, valor_bruto, nome_paciente, laudo_url, pets(nome, especie, raca)")
       .order("data_exame", { ascending: false })
       .range(from, from + 999);
     if (!data || data.length === 0) break;
