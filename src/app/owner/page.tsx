@@ -13,6 +13,7 @@ const MODULES = [
   { href: "/owner/exames",       icon: "📋", title: "Tabela de exames",          desc: "Buscar, filtrar e excluir registros" },
   { href: "/owner/despesas",     icon: "💸", title: "Despesas",                  desc: "Lançar e consultar gastos" },
   { href: "/owner/relatorio",    icon: "📄", title: "Relatório Cia do Animal",   desc: "Gerar PDF mensal para cobrança" },
+  { href: "/owner/historico",    icon: "🕓", title: "Histórico de alterações",   desc: "Edições, exclusões e pagamentos" },
 ];
 
 export default function OwnerPage() {

@@ -22,7 +22,7 @@ export default function PendentesAdminPage() {
           <h1 className="font-playfair text-3xl font-bold text-text-main">Pagamentos pendentes</h1>
           <p className="text-text-muted text-sm mt-1">Marque como recebido quando o pagamento entrar</p>
         </div>
-        <PagamentosPendentes />
+        <PagamentosPendentes origem="admin" />
       </main>
     </div>
   );

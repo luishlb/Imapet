@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { moeda, dataFmt } from "@/lib/utils";
+import { logDelete } from "@/lib/auditLog";
+import EditarExameModal, { type ExameEditavel } from "@/components/shared/EditarExameModal";
 
 const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 const HOJE = new Date();
@@ -44,6 +46,12 @@ export default function ExamesPage() {
   const [auth, setAuth] = useState<boolean | null>(null);
   const [exames, setExames] = useState<Exame[]>([]);
   const [carregando, setCarregando] = useState(true);
+  const [editando, setEditando] = useState<Exame | null>(null);
+
+  function aplicarEdicao(atualizado: ExameEditavel) {
+    setExames(prev => prev.map(x => x.id === atualizado.id ? ({ ...x, ...atualizado } as Exame) : x));
+    setEditando(null);
+  }
 
   const [modo, setModo] = useState<"mensal" | "periodo">("mensal");
   const [mesSel, setMesSel] = useState(HOJE.getMonth() + 1);
@@ -92,8 +100,29 @@ export default function ExamesPage() {
 
   async function apagarExame(id: string) {
     if (!window.confirm("Apagar este exame permanentemente?")) return;
+    const exame = exames.find(e => e.id === id);
     const { error } = await createClient().from("exames").delete().eq("id", id);
-    if (!error) setExames(prev => prev.filter(e => e.id !== id));
+    if (!error) {
+      if (exame) {
+        const paciente = exame.nome_paciente || exame.pets?.nome || "—";
+        await logDelete(
+          id,
+          {
+            data_exame: exame.data_exame,
+            paciente,
+            especie: exame.pets?.especie ?? null,
+            raca: exame.pets?.raca ?? null,
+            clinica: exame.clinica,
+            tipo: exame.tipo,
+            forma_pagamento: exame.forma_pagamento,
+            valor_bruto: exame.valor_bruto,
+          },
+          `${paciente} · ${exame.clinica || "—"} · ${dataFmt(exame.data_exame)}`,
+          "owner",
+        );
+      }
+      setExames(prev => prev.filter(e => e.id !== id));
+    }
   }
 
   if (!auth) return null;
@@ -188,9 +217,15 @@ export default function ExamesPage() {
                       <td className="px-3 py-2 text-text-muted">{e.tipo || "—"}</td>
                       <td className="px-3 py-2 text-text-muted">{e.forma_pagamento || "—"}</td>
                       <td className="px-3 py-2 text-right text-text-muted">{e.valor_bruto ? moeda(e.valor_bruto) : "—"}</td>
-                      <td className="px-3 py-2 text-center">
-                        <button onClick={() => apagarExame(e.id)}
-                          className="text-red-400 hover:text-red-600 hover:bg-red-50 px-2 py-1 rounded-lg transition-colors text-base leading-none" title="Apagar exame">🗑</button>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-1">
+                          <button onClick={() => setEditando(e)}
+                            className="text-text-muted hover:text-primary hover:bg-primary/10 px-2 py-1 rounded-lg transition-colors text-sm leading-none"
+                            title="Editar exame">✏️</button>
+                          <button onClick={() => apagarExame(e.id)}
+                            className="text-red-400 hover:text-red-600 hover:bg-red-50 px-2 py-1 rounded-lg transition-colors text-base leading-none"
+                            title="Apagar exame">🗑</button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -200,6 +235,15 @@ export default function ExamesPage() {
           )}
         </div>
       </main>
+
+      {editando && (
+        <EditarExameModal
+          exame={editando as ExameEditavel}
+          origem="owner"
+          onClose={() => setEditando(null)}
+          onSaved={aplicarEdicao}
+        />
+      )}
     </div>
   );
 }

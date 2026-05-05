@@ -5,6 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { moeda, dataFmt } from "@/lib/utils";
+import { logDelete } from "@/lib/auditLog";
+import EditarExameModal, { type ExameEditavel } from "@/components/shared/EditarExameModal";
 
 type Exame = {
   id: string;
@@ -57,6 +59,35 @@ async function fetchTodos(): Promise<Exame[]> {
 export default function FinanceiroPage() {
   const [exames, setExames] = useState<Exame[]>([]);
   const [carregando, setCarregando] = useState(true);
+  const [editando, setEditando] = useState<Exame | null>(null);
+
+  async function apagarExame(e: Exame) {
+    if (!window.confirm(`Apagar exame de ${e.pets?.nome || e.nome_paciente || "—"} (${dataFmt(e.data_exame)})?`)) return;
+    const { error } = await createClient().from("exames").delete().eq("id", e.id);
+    if (error) { alert("Erro: " + error.message); return; }
+    const paciente = e.nome_paciente || e.pets?.nome || "—";
+    await logDelete(
+      e.id,
+      {
+        data_exame: e.data_exame,
+        paciente,
+        especie: e.pets?.especie ?? null,
+        raca: e.pets?.raca ?? null,
+        clinica: e.clinica,
+        tipo: e.tipo,
+        forma_pagamento: e.forma_pagamento,
+        valor_bruto: e.valor_bruto,
+      },
+      `${paciente} · ${e.clinica || "—"} · ${dataFmt(e.data_exame)}`,
+      "admin",
+    );
+    setExames(prev => prev.filter(x => x.id !== e.id));
+  }
+
+  function aplicarEdicao(atualizado: ExameEditavel) {
+    setExames(prev => prev.map(x => x.id === atualizado.id ? ({ ...x, ...atualizado } as Exame) : x));
+    setEditando(null);
+  }
 
   const [modo, setModo] = useState<"mensal" | "periodo">("mensal");
   const [mesSel, setMesSel] = useState(HOJE.getMonth() + 1);
@@ -206,7 +237,7 @@ export default function FinanceiroPage() {
                       <th className="text-left px-2 py-3">Pgto.</th>
                       <th className="text-right px-2 py-3">Bruto</th>
                       <th className="text-right px-2 py-3">Vet. 42%</th>
-                      <th className="px-2 py-3"></th>
+                      <th className="px-2 py-3 text-center">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
@@ -221,13 +252,20 @@ export default function FinanceiroPage() {
                         <td className="px-2 py-2 text-text-muted">{normalizarPagamento(e.forma_pagamento)}</td>
                         <td className="px-2 py-2 text-right text-text-muted">{e.valor_bruto ? moeda(e.valor_bruto) : "—"}</td>
                         <td className="px-2 py-2 text-right text-text-muted">{e.valor_bruto ? moeda(e.valor_bruto * 0.42) : "—"}</td>
-                        <td className="px-2 py-2 text-center whitespace-nowrap">
-                          {e.laudo_url
-                            ? <a href={e.laudo_url} target="_blank" rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-[11px] font-medium hover:bg-primary/20 transition-colors">
-                                📄 Laudo
-                              </a>
-                            : <span className="text-gray-300 text-xs">—</span>}
+                        <td className="px-2 py-2 whitespace-nowrap">
+                          <div className="flex items-center justify-center gap-1">
+                            {e.laudo_url && (
+                              <a href={e.laudo_url} target="_blank" rel="noopener noreferrer"
+                                className="inline-flex items-center px-2 py-1 rounded-lg bg-primary/10 text-primary text-[11px] font-medium hover:bg-primary/20 transition-colors"
+                                title="Ver laudo">📄</a>
+                            )}
+                            <button onClick={() => setEditando(e)}
+                              className="text-text-muted hover:text-primary hover:bg-primary/10 px-2 py-1 rounded-lg transition-colors text-sm leading-none"
+                              title="Editar exame">✏️</button>
+                            <button onClick={() => apagarExame(e)}
+                              className="text-red-400 hover:text-red-600 hover:bg-red-50 px-2 py-1 rounded-lg transition-colors text-sm leading-none"
+                              title="Apagar exame">🗑</button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -238,6 +276,15 @@ export default function FinanceiroPage() {
           </div>
         )}
       </main>
+
+      {editando && (
+        <EditarExameModal
+          exame={editando as ExameEditavel}
+          origem="admin"
+          onClose={() => setEditando(null)}
+          onSaved={aplicarEdicao}
+        />
+      )}
     </div>
   );
 }

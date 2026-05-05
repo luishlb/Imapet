@@ -3,6 +3,7 @@
 import { Fragment, useState, useEffect, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { moeda, dataFmt } from "@/lib/utils";
+import { logPagamentoRecebido, type Origem } from "@/lib/auditLog";
 
 type ExamePendente = {
   id: string;
@@ -14,7 +15,7 @@ type ExamePendente = {
   pets: { nome: string; especie: string | null; raca: string | null } | null;
 };
 
-export default function PagamentosPendentes() {
+export default function PagamentosPendentes({ origem }: { origem: Origem }) {
   const [exames, setExames] = useState<ExamePendente[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [formas, setFormas] = useState<string[]>([]);
@@ -44,11 +45,17 @@ export default function PagamentosPendentes() {
   async function marcarRecebido(id: string) {
     if (!formaSel) return;
     setSalvando(true);
+    const exame = exames.find(e => e.id === id);
     const { error } = await createClient()
       .from("exames")
       .update({ forma_pagamento: formaSel })
       .eq("id", id);
     if (!error) {
+      if (exame) {
+        const paciente = exame.nome_paciente || exame.pets?.nome || "—";
+        const resumo = `${paciente} · ${exame.clinica || "—"} · ${dataFmt(exame.data_exame)}`;
+        await logPagamentoRecebido(id, "Pendente", formaSel, resumo, origem);
+      }
       setExames(prev => prev.filter(e => e.id !== id));
       setMarcandoId(null);
     }
