@@ -17,17 +17,18 @@ type Props = {
   onClose: () => void;
 };
 
-type Destino = {
-  nome: string;
-  email: string | null;
-  whatsapp: string | null;
-};
-
 export default function ReenviarLaudoModal({ exameId, onClose }: Props) {
   const [exame, setExame] = useState<ExameReenvio | null>(null);
-  const [clinica, setClinica] = useState<Destino | null>(null);
-  const [tutor, setTutor] = useState<Destino | null>(null);
+  const [tutorNome, setTutorNome] = useState("");
   const [carregando, setCarregando] = useState(true);
+
+  const [clinicaEmail, setClinicaEmail] = useState("");
+  const [clinicaWhats, setClinicaWhats] = useState("");
+  const [tutorEmail, setTutorEmail] = useState("");
+  const [tutorWhats, setTutorWhats] = useState("");
+  const [outroEmail, setOutroEmail] = useState("");
+  const [outroWhats, setOutroWhats] = useState("");
+
   const [acaoEmCurso, setAcaoEmCurso] = useState<string | null>(null);
   const [feitos, setFeitos] = useState<string[]>([]);
 
@@ -45,10 +46,13 @@ export default function ReenviarLaudoModal({ exameId, onClose }: Props) {
       if (exData?.clinica) {
         const { data: cl } = await sb
           .from("clinicas")
-          .select("nome, email, whatsapp")
+          .select("email, whatsapp")
           .eq("nome", exData.clinica)
           .maybeSingle();
-        if (cl) setClinica(cl as Destino);
+        if (cl) {
+          setClinicaEmail((cl as { email: string | null }).email || "");
+          setClinicaWhats((cl as { whatsapp: string | null }).whatsapp || "");
+        }
       }
 
       if (exData?.pet_id) {
@@ -63,7 +67,12 @@ export default function ReenviarLaudoModal({ exameId, onClose }: Props) {
             .select("nome, email, whatsapp")
             .eq("id", pet.tutor_id)
             .maybeSingle();
-          if (tu) setTutor(tu as Destino);
+          if (tu) {
+            const tut = tu as { nome: string; email: string | null; whatsapp: string | null };
+            setTutorNome(tut.nome || "");
+            setTutorEmail(tut.email || "");
+            setTutorWhats(tut.whatsapp || "");
+          }
         }
       }
 
@@ -71,16 +80,14 @@ export default function ReenviarLaudoModal({ exameId, onClose }: Props) {
     })();
   }, [exameId]);
 
-  function nomePet(): string {
-    return exame?.nome_paciente || exame?.pets?.nome || "—";
-  }
+  const nomePet = exame?.nome_paciente || exame?.pets?.nome || "—";
 
   function abrirWhatsApp(numero: string, chave: string) {
     if (!exame?.laudo_url) return;
     const num = numero.replace(/\D/g, "");
-    if (!num) return;
+    if (!num) { alert("Informe um número de WhatsApp válido."); return; }
     const msg = encodeURIComponent(
-      `Olá! Segue o laudo do paciente *${nomePet()}*.\n\n📄 Acesse pelo link:\n${exame.laudo_url}\n\nATT, IMAPET`
+      `Olá! Segue o laudo do paciente *${nomePet}*.\n\n📄 Acesse pelo link:\n${exame.laudo_url}\n\nATT, IMAPET`
     );
     window.open(`https://web.whatsapp.com/send?phone=55${num}&text=${msg}`, "_blank");
     setFeitos(prev => prev.includes(chave) ? prev : [...prev, chave]);
@@ -88,17 +95,18 @@ export default function ReenviarLaudoModal({ exameId, onClose }: Props) {
 
   async function enviarEmail(para: string, tipo: "clinica" | "cliente", chave: string, nomeClinica?: string) {
     if (!exame?.laudo_url) return;
+    if (!para.trim() || !/\S+@\S+\.\S+/.test(para)) { alert("Informe um email válido."); return; }
     setAcaoEmCurso(chave);
     const res = await fetch("/api/enviar-email", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         tipo,
-        para,
+        para: para.trim(),
         dados: {
-          nomePet: nomePet(),
+          nomePet,
           laudoUrl: exame.laudo_url,
-          nomeTutor: tutor?.nome || "",
+          nomeTutor: tutorNome || "",
           nomeClinica: nomeClinica || "",
         },
       }),
@@ -107,6 +115,46 @@ export default function ReenviarLaudoModal({ exameId, onClose }: Props) {
     else alert("Erro ao enviar email.");
     setAcaoEmCurso(null);
   }
+
+  type LinhaProps = {
+    chave: string;
+    tipo: "email" | "whats";
+    valor: string;
+    onChange: (v: string) => void;
+    placeholder: string;
+    onEnviar: () => void;
+  };
+  const Linha = ({ chave, tipo, valor, onChange, placeholder, onEnviar }: LinhaProps) => {
+    const enviado = feitos.includes(chave);
+    const carregando = acaoEmCurso === chave;
+    return (
+      <div className="flex items-center gap-2">
+        <input
+          type={tipo === "email" ? "email" : "tel"}
+          value={valor}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="input text-sm flex-1"
+        />
+        <button
+          onClick={onEnviar}
+          disabled={!valor.trim() || carregando}
+          className={`shrink-0 inline-flex items-center justify-center w-11 h-10 rounded-xl font-medium transition ${
+            enviado
+              ? "bg-green-100 text-green-700"
+              : valor.trim()
+              ? tipo === "email"
+                ? "bg-primary text-white hover:bg-primary-light"
+                : "bg-green-600 text-white hover:bg-green-700"
+              : "bg-gray-100 text-gray-300 cursor-not-allowed"
+          }`}
+          title={tipo === "email" ? "Enviar por email" : "Abrir WhatsApp"}
+        >
+          {enviado ? "✓" : tipo === "email" ? "📧" : "📱"}
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -127,7 +175,7 @@ export default function ReenviarLaudoModal({ exameId, onClose }: Props) {
         ) : (
           <div className="px-6 py-5 space-y-5">
             <div>
-              <p className="text-sm font-medium text-text-main">{nomePet()}</p>
+              <p className="text-sm font-medium text-text-main">{nomePet}</p>
               <p className="text-xs text-text-muted">{exame.clinica || "—"}</p>
               <a href={exame.laudo_url} target="_blank" rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 px-2.5 py-1 mt-2 rounded-lg bg-primary/10 text-primary text-[11px] font-medium hover:bg-primary/20 transition-colors">
@@ -136,63 +184,34 @@ export default function ReenviarLaudoModal({ exameId, onClose }: Props) {
             </div>
 
             {/* Clínica */}
-            <div className="border-t border-gray-100 pt-4">
-              <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">
+            <div className="border-t border-gray-100 pt-4 space-y-2">
+              <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">
                 Clínica {exame.clinica && <span className="font-normal normal-case tracking-normal text-text-main">— {exame.clinica}</span>}
               </p>
-              {!clinica ? (
-                <p className="text-xs text-text-muted italic">Clínica não cadastrada com email/WhatsApp.</p>
-              ) : (
-                <div className="space-y-2">
-                  <button
-                    onClick={() => clinica.email && enviarEmail(clinica.email, "clinica", "email-clinica", clinica.nome)}
-                    disabled={!clinica.email || acaoEmCurso === "email-clinica"}
-                    className={`w-full flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition ${feitos.includes("email-clinica") ? "bg-green-50 text-green-700" : clinica.email ? "bg-gray-50 hover:bg-primary/10 hover:text-primary text-text-main" : "bg-gray-50 text-gray-300 cursor-not-allowed"}`}
-                  >
-                    <span>📧 {clinica.email || "Sem email cadastrado"}</span>
-                    {feitos.includes("email-clinica") && <span className="text-xs">✓ Enviado</span>}
-                    {acaoEmCurso === "email-clinica" && <span className="text-xs">Enviando...</span>}
-                  </button>
-                  <button
-                    onClick={() => clinica.whatsapp && abrirWhatsApp(clinica.whatsapp, "wa-clinica")}
-                    disabled={!clinica.whatsapp}
-                    className={`w-full flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition ${feitos.includes("wa-clinica") ? "bg-green-50 text-green-700" : clinica.whatsapp ? "bg-gray-50 hover:bg-primary/10 hover:text-primary text-text-main" : "bg-gray-50 text-gray-300 cursor-not-allowed"}`}
-                  >
-                    <span>📱 {clinica.whatsapp || "Sem WhatsApp cadastrado"}</span>
-                    {feitos.includes("wa-clinica") && <span className="text-xs">✓ Aberto</span>}
-                  </button>
-                </div>
-              )}
+              <Linha chave="email-clinica" tipo="email" valor={clinicaEmail} onChange={setClinicaEmail} placeholder="email da clínica"
+                onEnviar={() => enviarEmail(clinicaEmail, "clinica", "email-clinica", exame.clinica || undefined)} />
+              <Linha chave="wa-clinica" tipo="whats" valor={clinicaWhats} onChange={setClinicaWhats} placeholder="(81) 99999-9999"
+                onEnviar={() => abrirWhatsApp(clinicaWhats, "wa-clinica")} />
             </div>
 
             {/* Tutor */}
-            <div className="border-t border-gray-100 pt-4">
-              <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">
-                Tutor {tutor && <span className="font-normal normal-case tracking-normal text-text-main">— {tutor.nome}</span>}
+            <div className="border-t border-gray-100 pt-4 space-y-2">
+              <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+                Tutor {tutorNome && <span className="font-normal normal-case tracking-normal text-text-main">— {tutorNome}</span>}
               </p>
-              {!tutor ? (
-                <p className="text-xs text-text-muted italic">Sem tutor vinculado a esse exame.</p>
-              ) : (
-                <div className="space-y-2">
-                  <button
-                    onClick={() => tutor.email && enviarEmail(tutor.email, "cliente", "email-tutor")}
-                    disabled={!tutor.email || acaoEmCurso === "email-tutor"}
-                    className={`w-full flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition ${feitos.includes("email-tutor") ? "bg-green-50 text-green-700" : tutor.email ? "bg-gray-50 hover:bg-primary/10 hover:text-primary text-text-main" : "bg-gray-50 text-gray-300 cursor-not-allowed"}`}
-                  >
-                    <span>📧 {tutor.email || "Sem email cadastrado"}</span>
-                    {feitos.includes("email-tutor") && <span className="text-xs">✓ Enviado</span>}
-                    {acaoEmCurso === "email-tutor" && <span className="text-xs">Enviando...</span>}
-                  </button>
-                  <button
-                    onClick={() => tutor.whatsapp && abrirWhatsApp(tutor.whatsapp, "wa-tutor")}
-                    disabled={!tutor.whatsapp}
-                    className={`w-full flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition ${feitos.includes("wa-tutor") ? "bg-green-50 text-green-700" : tutor.whatsapp ? "bg-gray-50 hover:bg-primary/10 hover:text-primary text-text-main" : "bg-gray-50 text-gray-300 cursor-not-allowed"}`}
-                  >
-                    <span>📱 {tutor.whatsapp || "Sem WhatsApp cadastrado"}</span>
-                    {feitos.includes("wa-tutor") && <span className="text-xs">✓ Aberto</span>}
-                  </button>
-                </div>
-              )}
+              <Linha chave="email-tutor" tipo="email" valor={tutorEmail} onChange={setTutorEmail} placeholder="email do tutor"
+                onEnviar={() => enviarEmail(tutorEmail, "cliente", "email-tutor")} />
+              <Linha chave="wa-tutor" tipo="whats" valor={tutorWhats} onChange={setTutorWhats} placeholder="(81) 99999-9999"
+                onEnviar={() => abrirWhatsApp(tutorWhats, "wa-tutor")} />
+            </div>
+
+            {/* Outro */}
+            <div className="border-t border-gray-100 pt-4 space-y-2">
+              <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Outro destinatário</p>
+              <Linha chave="email-outro" tipo="email" valor={outroEmail} onChange={setOutroEmail} placeholder="email avulso"
+                onEnviar={() => enviarEmail(outroEmail, "cliente", "email-outro")} />
+              <Linha chave="wa-outro" tipo="whats" valor={outroWhats} onChange={setOutroWhats} placeholder="(81) 99999-9999"
+                onEnviar={() => abrirWhatsApp(outroWhats, "wa-outro")} />
             </div>
           </div>
         )}
