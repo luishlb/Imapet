@@ -1,10 +1,10 @@
 "use client";
 
-import { valorExtenso } from "@/lib/utils";
+import { valorExtenso, tipoDocumento } from "@/lib/utils";
 
 type Props = {
   nomePagador: string;
-  cpf: string;
+  documento: string;
   valor: string;
   referente: string;
   data: string;
@@ -18,9 +18,10 @@ function dataPorExtenso(d: string) {
   return `${parseInt(dia)} de ${meses[parseInt(mes) - 1]} de ${ano}`;
 }
 
-export default function ReciboPreview({ nomePagador, cpf, valor, referente, data, numero }: Props) {
+export default function ReciboPreview({ nomePagador, documento, valor, referente, data, numero }: Props) {
   const valorNum = parseFloat(valor);
   const valorFmt = isNaN(valorNum) ? "0,00" : valorNum.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+  const tipoDoc = tipoDocumento(documento);
 
   return (
     <div id="recibo" className="relative overflow-hidden bg-white rounded-2xl shadow-sm print:shadow-none print:rounded-none">
@@ -63,10 +64,10 @@ export default function ReciboPreview({ nomePagador, cpf, valor, referente, data
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-[0.15em] mb-1">Pagador</p>
               <p className="text-sm font-medium text-gray-900">{nomePagador || "—"}</p>
             </div>
-            {cpf && (
+            {documento && (
               <div>
-                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-[0.15em] mb-1">CPF</p>
-                <p className="text-sm font-medium text-gray-900">{cpf}</p>
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-[0.15em] mb-1">{tipoDoc}</p>
+                <p className="text-sm font-medium text-gray-900">{documento}</p>
               </div>
             )}
             <div>

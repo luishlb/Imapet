@@ -3,15 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { valorExtenso } from "@/lib/utils";
+import { valorExtenso, formatarDocumento, tipoDocumento } from "@/lib/utils";
 import ReciboPreview from "@/components/shared/ReciboPreview";
-
-function formatarCPF(v: string) {
-  return v.replace(/\D/g, "").slice(0, 11)
-    .replace(/(\d{3})(\d)/, "$1.$2")
-    .replace(/(\d{3})(\d)/, "$1.$2")
-    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
-}
 
 function gerarNumero(): string {
   const n = new Date();
@@ -26,7 +19,7 @@ export default function ReciboOwnerPage() {
 
   const [form, setForm] = useState({
     nomePagador: "",
-    cpf: "",
+    documento: "",
     valor: "",
     referente: "",
     data: hoje,
@@ -41,7 +34,7 @@ export default function ReciboOwnerPage() {
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     const { name, value } = e.target;
-    setForm(f => ({ ...f, [name]: name === "cpf" ? formatarCPF(value) : value }));
+    setForm(f => ({ ...f, [name]: name === "documento" ? formatarDocumento(value) : value }));
   }
 
   function gerar() {
@@ -72,8 +65,11 @@ export default function ReciboOwnerPage() {
                 <input name="nomePagador" value={form.nomePagador} onChange={handleChange} placeholder="Nome completo" className="input" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-text-muted mb-1.5">CPF <span className="text-gray-300 font-normal">(opcional)</span></label>
-                <input name="cpf" value={form.cpf} onChange={handleChange} placeholder="000.000.000-00" inputMode="numeric" className="input" />
+                <label className="block text-xs font-medium text-text-muted mb-1.5">
+                  CPF / CNPJ <span className="text-gray-300 font-normal">(opcional)</span>
+                  {form.documento && <span className="text-primary font-semibold ml-2">{tipoDocumento(form.documento)}</span>}
+                </label>
+                <input name="documento" value={form.documento} onChange={handleChange} placeholder="CPF ou CNPJ" inputMode="numeric" className="input" />
               </div>
             </div>
 

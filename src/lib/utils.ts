@@ -19,6 +19,30 @@ export function formatarPagamento(p: string | null): string {
   return "Pendente";
 }
 
+export function formatarDocumento(v: string): string {
+  const d = v.replace(/\D/g, "");
+  if (d.length === 0) return "";
+  if (d.length <= 11) {
+    return d
+      .slice(0, 11)
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+  }
+  return d
+    .slice(0, 14)
+    .replace(/(\d{2})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1/$2")
+    .replace(/(\d{4})(\d{1,2})$/, "$1-$2");
+}
+
+export function tipoDocumento(v: string): "CPF" | "CNPJ" | "" {
+  const d = v.replace(/\D/g, "");
+  if (d.length === 0) return "";
+  return d.length <= 11 ? "CPF" : "CNPJ";
+}
+
 export function valorExtenso(valor: number): string {
   if (isNaN(valor) || valor <= 0) return "zero reais";
   const reais = Math.floor(valor);
