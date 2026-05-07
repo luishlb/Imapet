@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { valorExtenso } from "@/lib/utils";
+import ReciboPreview from "@/components/shared/ReciboPreview";
 
 function formatarCPF(v: string) {
   return v.replace(/\D/g, "").slice(0, 11)
@@ -12,14 +13,11 @@ function formatarCPF(v: string) {
     .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
 }
 
-function dataPorExtenso(d: string) {
-  if (!d) return "";
-  const meses = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
-  const [ano, mes, dia] = d.split("-");
-  return `${parseInt(dia)} de ${meses[parseInt(mes) - 1]} de ${ano}`;
+function gerarNumero(): string {
+  const n = new Date();
+  const pad = (x: number) => String(x).padStart(2, "0");
+  return `${n.getFullYear()}${pad(n.getMonth() + 1)}${pad(n.getDate())}-${pad(n.getHours())}${pad(n.getMinutes())}`;
 }
-
-
 
 export default function ReciboPage() {
   const hoje = new Date().toISOString().split("T")[0];
@@ -32,17 +30,22 @@ export default function ReciboPage() {
     data: hoje,
   });
   const [gerado, setGerado] = useState(false);
+  const [numero, setNumero] = useState("");
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     const { name, value } = e.target;
     setForm(f => ({ ...f, [name]: name === "cpf" ? formatarCPF(value) : value }));
   }
 
+  function gerar() {
+    setNumero(gerarNumero());
+    setGerado(true);
+  }
+
   const valorNum = parseFloat(form.valor);
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header — oculto na impressão */}
       <header className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between sticky top-0 z-10 print:hidden">
         <Image src="/Logomarca/imapet_transparent.png" alt="IMAPET" width={100} height={50} className="brightness-0" />
         <span className="text-sm text-text-muted font-medium">Gerador de recibo</span>
@@ -50,8 +53,6 @@ export default function ReciboPage() {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-10">
-
-        {/* Formulário — oculto na impressão */}
         <div className="print:hidden">
           <h1 className="font-playfair text-3xl font-bold text-text-main mb-2">Gerador de recibo</h1>
           <p className="text-text-muted text-sm mb-8">Preencha os dados e gere o recibo para imprimir ou salvar em PDF.</p>
@@ -93,17 +94,15 @@ export default function ReciboPage() {
           )}
 
           <button
-            onClick={() => setGerado(true)}
+            onClick={gerar}
             disabled={!form.nomePagador || !form.valor || !form.referente || !form.data}
             className="w-full mt-6 bg-primary hover:bg-primary-light text-white font-semibold py-4 rounded-xl transition-all duration-300 disabled:opacity-50">
             Gerar recibo
           </button>
         </div>
 
-        {/* Preview do recibo — visível depois de gerar e na impressão */}
         {gerado && (
           <>
-            {/* Botões de ação — ocultos na impressão */}
             <div className="print:hidden mt-8 mb-6 flex items-center gap-3">
               <button onClick={() => window.print()}
                 className="flex-1 bg-primary hover:bg-primary-light text-white font-semibold py-3 rounded-xl transition-all">
@@ -115,47 +114,7 @@ export default function ReciboPage() {
               </button>
             </div>
 
-            {/* Recibo */}
-            <div id="recibo" className="bg-white rounded-2xl shadow-sm p-10 print:shadow-none print:rounded-none print:p-0">
-
-              {/* Cabeçalho */}
-              <div className="flex items-center justify-between mb-8 pb-6 border-b border-gray-200">
-                <img src="/Logomarca/57423_Imapet_040521_aa-01.png" alt="IMAPET" width={110} style={{ display: "block" }} />
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-[#8B1A1A] tracking-widest">RECIBO</p>
-                  <p className="text-xs text-gray-400 mt-1">{dataPorExtenso(form.data)}</p>
-                </div>
-              </div>
-
-              {/* Corpo */}
-              <p className="text-sm leading-relaxed text-gray-700 mb-6">
-                Recebi(emos) de{" "}
-                <strong className="text-gray-900">{form.nomePagador}</strong>
-                {form.cpf && <>, CPF <strong className="text-gray-900">{form.cpf}</strong></>}
-                {", "}a importância de{" "}
-                <strong className="text-gray-900">
-                  R$ {parseFloat(form.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                </strong>{" "}
-                ({valorExtenso(valorNum)}), referente a:
-              </p>
-
-              <div className="bg-gray-50 rounded-xl px-5 py-4 mb-10">
-                <p className="text-sm text-gray-800 leading-relaxed">{form.referente}</p>
-              </div>
-
-              {/* Assinatura */}
-              <div className="flex justify-end mt-16">
-                <div className="text-center">
-                  <img src="/assinatura.png" alt="Assinatura" style={{ height: 80, margin: "0 auto 4px", display: "block", objectFit: "contain" }} />
-                  <div className="border-t border-gray-400 pt-3 w-72">
-                    <p className="text-sm font-semibold text-gray-800">Camila Bentzen Barreto</p>
-                    <p className="text-xs text-gray-500">Médica Veterinária — CRMV-PE 5916</p>
-                    <p className="text-xs text-[#8B1A1A] font-medium mt-0.5">IMAPET Diagnóstico Veterinário por Imagem</p>
-                  </div>
-                </div>
-              </div>
-
-            </div>
+            <ReciboPreview {...form} numero={numero} />
           </>
         )}
       </main>
