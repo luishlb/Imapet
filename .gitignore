@@ -34,6 +34,10 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
+# Local credentials and notes (never commit)
+credenciais-*.md
+*.secret.md
+
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts

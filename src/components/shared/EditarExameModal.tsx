@@ -59,16 +59,18 @@ export default function EditarExameModal({ exame, origem, onClose, onSaved }: Pr
 
     let novoLaudoUrl: string | null | undefined = undefined;
     if (arquivo) {
-      const ext = arquivo.name.split(".").pop();
-      const path = `laudos/${Date.now()}-${exame.id.slice(0, 8)}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("laudos").upload(path, arquivo);
-      if (upErr) {
+      const fd = new FormData();
+      fd.append("file", arquivo);
+      fd.append("prefix", `laudos/${exame.pets ? "edit" : exame.id.slice(0, 8)}`);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      if (!res.ok) {
         setSalvando(false);
-        alert("Erro ao enviar arquivo: " + upErr.message);
+        const { error: msg } = await res.json().catch(() => ({ error: "erro" }));
+        alert("Erro ao enviar arquivo: " + msg);
         return;
       }
-      const { data: urlData } = supabase.storage.from("laudos").getPublicUrl(path);
-      novoLaudoUrl = urlData.publicUrl;
+      const { url } = await res.json();
+      novoLaudoUrl = url;
     }
 
     const valorBrutoFinal = isNaN(valorBruto) ? null : valorBruto;

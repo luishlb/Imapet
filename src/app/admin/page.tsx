@@ -189,12 +189,16 @@ export default function AdminPage() {
 
       let laudoUrl = "";
       if (arquivo) {
-        const nomeSeguro = arquivo.name.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9._-]/g, "_");
-        const nomeArquivo = `${petId}/${Date.now()}_${nomeSeguro}`;
-        const { error: erroUpload } = await supabase.storage.from("laudos").upload(nomeArquivo, arquivo);
-        if (erroUpload) throw new Error(`Erro ao enviar o laudo: ${erroUpload.message}`);
-        const { data: urlData } = supabase.storage.from("laudos").getPublicUrl(nomeArquivo);
-        laudoUrl = urlData.publicUrl;
+        const fd = new FormData();
+        fd.append("file", arquivo);
+        fd.append("prefix", `laudos/${petId}`);
+        const res = await fetch("/api/upload", { method: "POST", body: fd });
+        if (!res.ok) {
+          const { error: msg } = await res.json().catch(() => ({ error: "erro" }));
+          throw new Error(`Erro ao enviar o laudo: ${msg}`);
+        }
+        const { url } = await res.json();
+        laudoUrl = url;
       }
 
       const preco = form.preco ? parseFloat(form.preco) : null;

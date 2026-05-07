@@ -43,12 +43,13 @@ export default function DespesasOwnerPage() {
     const supabase = createClient();
     let comprovante_url: string | null = null;
     if (arquivo) {
-      const ext = arquivo.name.split(".").pop();
-      const path = `comprovantes/${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("laudos").upload(path, arquivo);
-      if (!upErr) {
-        const { data: urlData } = supabase.storage.from("laudos").getPublicUrl(path);
-        comprovante_url = urlData.publicUrl;
+      const fd = new FormData();
+      fd.append("file", arquivo);
+      fd.append("prefix", "comprovantes");
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      if (res.ok) {
+        const { url } = await res.json();
+        comprovante_url = url;
       }
     }
     const { data } = await supabase.from("despesas")
