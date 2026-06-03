@@ -14,6 +14,7 @@ const MODULES = [
   { href: "/owner/despesas",     icon: "💸", title: "Despesas",                  desc: "Lançar e consultar gastos" },
   { href: "/owner/relatorio",    icon: "📄", title: "Relatório Cia do Animal",   desc: "Gerar PDF mensal para cobrança" },
   { href: "/owner/recibo",       icon: "🧾", title: "Gerador de recibo",         desc: "Emitir recibo avulso" },
+  { href: "/owner/notas",        icon: "🏛️", title: "Notas fiscais",             desc: "Emitir e consultar NFS-e" },
   { href: "/owner/historico",    icon: "🕓", title: "Histórico de alterações",   desc: "Edições, exclusões e pagamentos" },
 ];
 

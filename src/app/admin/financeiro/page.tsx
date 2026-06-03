@@ -8,6 +8,7 @@ import { moeda, dataFmt } from "@/lib/utils";
 import { logDelete } from "@/lib/auditLog";
 import EditarExameModal, { type ExameEditavel } from "@/components/shared/EditarExameModal";
 import ReenviarLaudoModal from "@/components/shared/ReenviarLaudoModal";
+import EmitirNotaModal from "@/components/shared/EmitirNotaModal";
 
 type Exame = {
   id: string;
@@ -62,6 +63,7 @@ export default function FinanceiroPage() {
   const [carregando, setCarregando] = useState(true);
   const [editando, setEditando] = useState<Exame | null>(null);
   const [reenviandoId, setReenviandoId] = useState<string | null>(null);
+  const [emitindoNotaId, setEmitindoNotaId] = useState<string | null>(null);
 
   async function apagarExame(e: Exame) {
     if (!window.confirm(`Apagar exame de ${e.pets?.nome || e.nome_paciente || "—"} (${dataFmt(e.data_exame)})?`)) return;
@@ -266,6 +268,9 @@ export default function FinanceiroPage() {
                                 className="inline-flex items-center px-2 py-1 rounded-lg bg-blue-50 text-blue-700 text-[11px] font-medium hover:bg-blue-100 transition-colors"
                                 title="Reenviar laudo">📤</button>
                             )}
+                            <button onClick={() => setEmitindoNotaId(e.id)}
+                              className="inline-flex items-center px-2 py-1 rounded-lg bg-green-50 text-green-700 text-[11px] font-medium hover:bg-green-100 transition-colors"
+                              title="Emitir NFS-e">🧾</button>
                             <button onClick={() => setEditando(e)}
                               className="text-text-muted hover:text-primary hover:bg-primary/10 px-2 py-1 rounded-lg transition-colors text-sm leading-none"
                               title="Editar exame">✏️</button>
@@ -297,6 +302,13 @@ export default function FinanceiroPage() {
         <ReenviarLaudoModal
           exameId={reenviandoId}
           onClose={() => setReenviandoId(null)}
+        />
+      )}
+
+      {emitindoNotaId && (
+        <EmitirNotaModal
+          exameId={emitindoNotaId}
+          onClose={() => setEmitindoNotaId(null)}
         />
       )}
     </div>
