@@ -67,7 +67,7 @@ export default function ReciboPreview({ nomePagador, documento, valor, referente
             <img src="/Logomarca/57423_Imapet_040521_aa-01.png" alt="IMAPET" style={{ height: 64, display: "block" }} />
             <div className="text-right">
               <p className="text-3xl font-bold text-[#8B1A1A] tracking-[0.25em] font-playfair">RECIBO</p>
-              <p className="text-[11px] text-gray-400 font-mono mt-1">Nº {numero}</p>
+              <p className="text-[12px] text-gray-500 font-mono mt-1 font-semibold">Nº {numero}</p>
             </div>
           </div>
 

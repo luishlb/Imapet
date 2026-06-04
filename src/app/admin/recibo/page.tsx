@@ -4,12 +4,12 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { valorExtenso, formatarDocumento, tipoDocumento } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 import ReciboPreview from "@/components/shared/ReciboPreview";
 
-function gerarNumero(): string {
-  const n = new Date();
-  const pad = (x: number) => String(x).padStart(2, "0");
-  return `${n.getFullYear()}${pad(n.getMonth() + 1)}${pad(n.getDate())}-${pad(n.getHours())}${pad(n.getMinutes())}`;
+function formatarNumeroRecibo(numero: number, data: string): string {
+  const ano = data ? data.split("-")[0] : new Date().getFullYear().toString();
+  return `${String(numero).padStart(4, "0")}/${ano}`;
 }
 
 export default function ReciboPage() {
@@ -24,15 +24,36 @@ export default function ReciboPage() {
   });
   const [gerado, setGerado] = useState(false);
   const [numero, setNumero] = useState("");
+  const [gerando, setGerando] = useState(false);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     const { name, value } = e.target;
     setForm(f => ({ ...f, [name]: name === "documento" ? formatarDocumento(value) : value }));
   }
 
-  function gerar() {
-    setNumero(gerarNumero());
+  async function gerar() {
+    setGerando(true);
+    const { data, error } = await createClient()
+      .from("recibos")
+      .insert({
+        nome_pagador: form.nomePagador.trim(),
+        documento: form.documento || null,
+        tipo_documento: tipoDocumento(form.documento) || null,
+        valor: parseFloat(form.valor),
+        referente: form.referente.trim(),
+        data_recibo: form.data,
+        origem: "admin",
+      })
+      .select("numero")
+      .single();
+    if (error || !data) {
+      alert("Erro ao gerar recibo: " + (error?.message || "erro desconhecido"));
+      setGerando(false);
+      return;
+    }
+    setNumero(formatarNumeroRecibo(data.numero, form.data));
     setGerado(true);
+    setGerando(false);
   }
 
   const valorNum = parseFloat(form.valor);
@@ -91,9 +112,9 @@ export default function ReciboPage() {
 
           <button
             onClick={gerar}
-            disabled={!form.nomePagador || !form.valor || !form.referente || !form.data}
+            disabled={gerando || !form.nomePagador || !form.valor || !form.referente || !form.data}
             className="w-full mt-6 bg-primary hover:bg-primary-light text-white font-semibold py-4 rounded-xl transition-all duration-300 disabled:opacity-50">
-            Gerar recibo
+            {gerando ? "Gerando..." : "Gerar recibo"}
           </button>
         </div>
 
