@@ -7,9 +7,21 @@ import { valorExtenso, formatarDocumento, tipoDocumento } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import ReciboPreview from "@/components/shared/ReciboPreview";
 
-function formatarNumeroRecibo(numero: number, data: string): string {
-  const ano = data ? data.split("-")[0] : new Date().getFullYear().toString();
-  return `${String(numero).padStart(4, "0")}/${ano}`;
+function formatarNumeroRecibo(numeroNoMes: number, data: string): string {
+  const [ano, mes] = data.split("-");
+  return `${mes}/${String(numeroNoMes).padStart(4, "0")}/${ano}`;
+}
+
+async function proximoNumeroNoMes(supabase: ReturnType<typeof import("@/lib/supabase/client").createClient>, data: string): Promise<number> {
+  const [ano, mes] = data.split("-");
+  const ini = `${ano}-${mes}-01`;
+  const fim = new Date(parseInt(ano), parseInt(mes), 1).toISOString().split("T")[0];
+  const { count } = await supabase
+    .from("recibos")
+    .select("id", { count: "exact", head: true })
+    .gte("data_recibo", ini)
+    .lt("data_recibo", fim);
+  return (count || 0) + 1;
 }
 
 export default function ReciboPage() {
@@ -33,7 +45,9 @@ export default function ReciboPage() {
 
   async function gerar() {
     setGerando(true);
-    const { data, error } = await createClient()
+    const supabase = createClient();
+    const numeroNoMes = await proximoNumeroNoMes(supabase, form.data);
+    const { data, error } = await supabase
       .from("recibos")
       .insert({
         nome_pagador: form.nomePagador.trim(),
@@ -43,15 +57,16 @@ export default function ReciboPage() {
         referente: form.referente.trim(),
         data_recibo: form.data,
         origem: "admin",
+        numero_no_mes: numeroNoMes,
       })
-      .select("numero")
+      .select("numero_no_mes")
       .single();
     if (error || !data) {
       alert("Erro ao gerar recibo: " + (error?.message || "erro desconhecido"));
       setGerando(false);
       return;
     }
-    setNumero(formatarNumeroRecibo(data.numero, form.data));
+    setNumero(formatarNumeroRecibo(data.numero_no_mes, form.data));
     setGerado(true);
     setGerando(false);
   }

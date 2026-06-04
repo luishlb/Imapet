@@ -10,6 +10,7 @@ import ReciboPreview from "@/components/shared/ReciboPreview";
 type Recibo = {
   id: string;
   numero: number;
+  numero_no_mes: number | null;
   nome_pagador: string;
   documento: string | null;
   tipo_documento: string | null;
@@ -20,9 +21,13 @@ type Recibo = {
   criado_em: string;
 };
 
-function formatarNumeroRecibo(numero: number, data: string): string {
-  const ano = data ? data.split("-")[0] : new Date().getFullYear().toString();
-  return `${String(numero).padStart(4, "0")}/${ano}`;
+function formatarNumeroRecibo(r: Pick<Recibo, "numero" | "numero_no_mes" | "data_recibo">): string {
+  const [ano, mes] = r.data_recibo.split("-");
+  if (r.numero_no_mes !== null && r.numero_no_mes !== undefined) {
+    return `${mes}/${String(r.numero_no_mes).padStart(4, "0")}/${ano}`;
+  }
+  // Fallback pra recibos antigos sem numero_no_mes
+  return `${String(r.numero).padStart(4, "0")}/${ano}`;
 }
 
 export default function RecibosHistoricoPage() {
@@ -147,7 +152,7 @@ export default function RecibosHistoricoPage() {
                       {filtrados.map(r => (
                         <tr key={r.id} className="hover:bg-gray-50">
                           <td className="px-3 py-2 font-mono text-text-main font-semibold whitespace-nowrap">
-                            {formatarNumeroRecibo(r.numero, r.data_recibo)}
+                            {formatarNumeroRecibo(r)}
                           </td>
                           <td className="px-3 py-2 text-text-muted whitespace-nowrap">{dataFmt(r.data_recibo)}</td>
                           <td className="px-3 py-2 font-medium text-text-main">{r.nome_pagador}</td>
@@ -183,7 +188,7 @@ export default function RecibosHistoricoPage() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-4 overflow-y-auto print:p-0 print:bg-white" onClick={() => setVerRecibo(null)}>
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl my-8 print:my-0 print:shadow-none print:max-w-full" onClick={e => e.stopPropagation()}>
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white rounded-t-2xl print:hidden">
-              <h2 className="font-semibold text-text-main">Recibo Nº {formatarNumeroRecibo(verRecibo.numero, verRecibo.data_recibo)}</h2>
+              <h2 className="font-semibold text-text-main">Recibo Nº {formatarNumeroRecibo(verRecibo)}</h2>
               <div className="flex items-center gap-2">
                 <button onClick={() => window.print()}
                   className="bg-primary text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-primary-light transition">
@@ -200,7 +205,7 @@ export default function RecibosHistoricoPage() {
                 valor={String(verRecibo.valor)}
                 referente={verRecibo.referente}
                 data={verRecibo.data_recibo}
-                numero={formatarNumeroRecibo(verRecibo.numero, verRecibo.data_recibo)}
+                numero={formatarNumeroRecibo(verRecibo)}
               />
             </div>
           </div>
