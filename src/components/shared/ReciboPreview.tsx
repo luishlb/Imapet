@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { valorExtenso, tipoDocumento } from "@/lib/utils";
 
 type Props = {
@@ -18,10 +19,33 @@ function dataPorExtenso(d: string) {
   return `${parseInt(dia)} de ${meses[parseInt(mes) - 1]} de ${ano}`;
 }
 
+function montarNomeArquivo(nomePagador: string, data: string): string {
+  const nomeLimpo = (nomePagador || "Cliente")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-zA-Z0-9\s]/g, "")
+    .trim()
+    .replace(/\s+/g, " ");
+  const dataFmt = data ? (() => {
+    const [a, m, d] = data.split("-");
+    return `${d}-${m}-${a}`;
+  })() : "";
+  return `Recibo IMAPET - ${nomeLimpo}${dataFmt ? ` - ${dataFmt}` : ""}`;
+}
+
 export default function ReciboPreview({ nomePagador, documento, valor, referente, data, numero }: Props) {
   const valorNum = parseFloat(valor);
   const valorFmt = isNaN(valorNum) ? "0,00" : valorNum.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
   const tipoDoc = tipoDocumento(documento);
+
+  // Define o título do documento dinamicamente — o browser usa esse título
+  // como nome sugerido no diálogo "Imprimir / Salvar como PDF"
+  useEffect(() => {
+    const tituloOriginal = document.title;
+    const nomeArquivo = montarNomeArquivo(nomePagador, data);
+    document.title = nomeArquivo;
+    return () => { document.title = tituloOriginal; };
+  }, [nomePagador, data]);
 
   return (
     <div id="recibo" className="relative overflow-hidden bg-white rounded-2xl shadow-sm print:shadow-none print:rounded-none">
