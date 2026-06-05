@@ -1,16 +1,12 @@
 // Integração com Portal Nacional NFS-e (gov.br/nfse)
 //
-// Status: ESQUELETO — funções principais ainda não implementadas porque dependem
-// do certificado A1. Quando NFSE_CERT_BASE64 estiver preenchido, implementar:
-//   - carregarCertificado
-//   - assinarXml (xml-crypto + cert)
-//   - emitirNfse (POST /nfse com mTLS via https.Agent)
-//
-// Endpoints:
-//   Homologação: https://adn.producaorestrita.nfse.gov.br
-//   Produção:    https://adn.nfse.gov.br
-//
-// Fluxo: monta DPS (XML) → assina com A1 → gzip → POST /nfse via mTLS → NFS-e
+// Fluxo: montar DPS XML → assinar com A1 → gzip → POST /nfse via mTLS → NFS-e
+
+import forge from "node-forge";
+import { SignedXml } from "xml-crypto";
+import { XMLBuilder, XMLParser } from "fast-xml-parser";
+import { gzipSync } from "node:zlib";
+import https from "node:https";
 
 const ENDPOINTS = {
   homologacao: "https://adn.producaorestrita.nfse.gov.br",
@@ -21,7 +17,7 @@ export type Ambiente = "homologacao" | "producao";
 
 export type TomadorPessoaFisica = {
   tipo: "CPF";
-  documento: string;       // CPF formatado
+  documento: string;
   nome: string;
   email?: string;
   endereco?: Endereco;
@@ -29,8 +25,8 @@ export type TomadorPessoaFisica = {
 
 export type TomadorPessoaJuridica = {
   tipo: "CNPJ";
-  documento: string;       // CNPJ formatado
-  nome: string;            // Razão social
+  documento: string;
+  nome: string;
   inscricaoMunicipal?: string;
   email?: string;
   endereco?: Endereco;
@@ -46,24 +42,27 @@ export type Endereco = {
   cidade: string;
   uf: string;
   cep: string;
+  codigoMunicipio?: string;
 };
 
 export type DadosDPS = {
   tomador: Tomador;
   descricao: string;
   valorServico: number;
-  codigoServico?: string;
-  aliquotaIss?: number;     // ex: 0.02 = 2%
-  dataPrestacao?: string;   // ISO date
+  codigoServicoNacional?: string;
+  codigoServicoMunicipal?: string;
+  aliquotaIss?: number;
+  dataPrestacao?: string; // YYYY-MM-DD
 };
 
 export type RespostaEmissao =
-  | { ok: true; numeroNfse: string; codigoVerificacao: string; xmlNfse: string }
+  | { ok: true; numeroNfse: string; codigoVerificacao: string; xmlNfse: string; xmlDps: string }
   | { ok: false; erro: string; detalhes?: unknown };
 
+// ─── Configuração / Helpers ──────────────────────────────────────────────────
+
 export function ambienteAtual(): Ambiente {
-  const v = process.env.NFSE_AMBIENTE || "homologacao";
-  return v === "producao" ? "producao" : "homologacao";
+  return process.env.NFSE_AMBIENTE === "producao" ? "producao" : "homologacao";
 }
 
 export function endpointBase(): string {
@@ -79,39 +78,328 @@ export function nfseConfigurada(): boolean {
   );
 }
 
-// TODO: Implementar após receber certificado
-// import forge from "node-forge";
-// export function carregarCertificado() {
-//   const b64 = process.env.NFSE_CERT_BASE64!;
-//   const senha = process.env.NFSE_CERT_PASSWORD!;
-//   const der = Buffer.from(b64, "base64").toString("binary");
-//   const p12Asn1 = forge.asn1.fromDer(der);
-//   const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, senha);
-//   // Extrair chave privada e certificado X.509
-//   ...
-// }
+function soDigitos(s: string): string {
+  return s.replace(/\D/g, "");
+}
 
-// TODO: Implementar assinatura XML com xml-crypto
+// ─── Certificado A1 ──────────────────────────────────────────────────────────
 
-// TODO: Implementar emissão real
-export async function emitirNfse(_dados: DadosDPS): Promise<RespostaEmissao> {
-  if (!nfseConfigurada()) {
-    return {
-      ok: false,
-      erro: "Certificado A1 ainda não configurado. Preencha NFSE_CERT_BASE64 e NFSE_CERT_PASSWORD nas env vars.",
-    };
+let certCache: { pemCert: string; pemKey: string; cert: forge.pki.Certificate; key: forge.pki.rsa.PrivateKey } | null = null;
+
+export function carregarCertificado() {
+  if (certCache) return certCache;
+
+  const b64 = process.env.NFSE_CERT_BASE64!;
+  const senha = process.env.NFSE_CERT_PASSWORD!;
+
+  const der = Buffer.from(b64, "base64").toString("binary");
+  const p12Asn1 = forge.asn1.fromDer(der);
+  const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, senha);
+
+  const certBags = p12.getBags({ bagType: forge.pki.oids.certBag });
+  const certBag = certBags[forge.pki.oids.certBag]?.[0];
+  const keyBags = p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag });
+  const keyBag = keyBags[forge.pki.oids.pkcs8ShroudedKeyBag]?.[0];
+
+  if (!certBag?.cert || !keyBag?.key) {
+    throw new Error("Certificado A1 inválido — não consegui extrair cert ou chave");
   }
 
-  return {
-    ok: false,
-    erro: "Emissão real ainda não implementada. Aguardando próxima sessão de desenvolvimento.",
+  const cert = certBag.cert;
+  const key = keyBag.key as forge.pki.rsa.PrivateKey;
+  const pemCert = forge.pki.certificateToPem(cert);
+  const pemKey = forge.pki.privateKeyToPem(key);
+
+  certCache = { cert, key, pemCert, pemKey };
+  return certCache;
+}
+
+// ─── Montagem do DPS XML ─────────────────────────────────────────────────────
+
+function gerarIdDps(cnpj: string, serie: string, numero: string): string {
+  // ID format: DPS + CNPJ(14) + SERIE(5) + NUMERO(15) — total 39 chars
+  return `DPS${cnpj.padStart(14, "0")}${serie.padStart(5, "0")}${numero.padStart(15, "0")}`;
+}
+
+export function montarDpsXml(dados: DadosDPS, params: {
+  serie: string;
+  numero: string;
+  tpEmis?: number; // 1=Normal, 2=Contingência
+}): string {
+  const cnpjEmit = soDigitos(process.env.NFSE_CNPJ_EMITENTE!);
+  const imEmit = soDigitos(process.env.NFSE_INSCRICAO_MUNICIPAL!);
+  const codMun = process.env.NFSE_CODIGO_MUNICIPIO || "2611606";
+  const aliq = dados.aliquotaIss ?? parseFloat(process.env.NFSE_ALIQUOTA_ISS || "0.02");
+  const codTribNac = dados.codigoServicoNacional || process.env.NFSE_CODIGO_SERVICO_NACIONAL || "05.03.01";
+  const codTribMun = dados.codigoServicoMunicipal || process.env.NFSE_CODIGO_SERVICO || "501";
+
+  const idDps = gerarIdDps(cnpjEmit, params.serie, params.numero);
+  const dhEmi = new Date().toISOString().replace(/\.\d{3}Z$/, "-03:00");
+  const dCompet = (dados.dataPrestacao || new Date().toISOString().slice(0, 10));
+
+  const valor = dados.valorServico;
+  const vISS = +(valor * aliq).toFixed(2);
+
+  // Tomador
+  const t = dados.tomador;
+  const tomadorDoc = t.tipo === "CPF"
+    ? { CPF: soDigitos(t.documento) }
+    : { CNPJ: soDigitos(t.documento) };
+
+  const tribOpSimples = (process.env.NFSE_REGIME_TRIBUTARIO || "").toLowerCase().includes("simples") ? 1 : 3;
+
+  const dpsObj = {
+    DPS: {
+      "@_xmlns": "http://www.sped.fazenda.gov.br/nfse",
+      "@_versao": "1.00",
+      infDPS: {
+        "@_Id": idDps,
+        tpAmb: ambienteAtual() === "producao" ? 1 : 2,
+        dhEmi,
+        verAplic: "IMAPET-1.0",
+        serie: params.serie,
+        nDPS: params.numero,
+        dCompet,
+        tpEmit: 1, // 1=Prestador emitindo a própria nota
+        cLocEmi: codMun,
+        prest: {
+          CNPJ: cnpjEmit,
+          IM: imEmit,
+          xNome: "IMAPET DIAGNOSTICO VETERINARIO POR IMAGEM LTDA",
+          regTrib: {
+            opSimpNac: tribOpSimples, // 1=Simples Nacional, 3=Regime normal
+            regEspTrib: 0,
+          },
+          end: {
+            endNac: { cMun: codMun, CEP: "50050000" },
+            xLgr: "RUA DA AURORA",
+            nro: "295",
+            xCpl: "APTO 0502",
+            xBairro: "BOA VISTA",
+          },
+          fone: "8196741525",
+          email: "imapet@imapet.com.br",
+        },
+        toma: {
+          ...tomadorDoc,
+          xNome: t.nome,
+          ...(t.email ? { email: t.email } : {}),
+          ...(t.endereco ? {
+            end: {
+              endNac: {
+                cMun: t.endereco.codigoMunicipio || codMun,
+                CEP: soDigitos(t.endereco.cep),
+              },
+              xLgr: t.endereco.logradouro,
+              nro: t.endereco.numero,
+              ...(t.endereco.complemento ? { xCpl: t.endereco.complemento } : {}),
+              xBairro: t.endereco.bairro,
+            },
+          } : {}),
+        },
+        serv: {
+          locPrest: { cLocPrestacao: codMun, cPaisPrestacao: "BR" },
+          cServ: {
+            cTribNac: codTribNac,
+            cTribMun: codTribMun,
+            xDescServ: dados.descricao.slice(0, 2000),
+          },
+        },
+        valores: {
+          vServPrest: { vServ: valor.toFixed(2) },
+          trib: {
+            tribMun: {
+              tribISSQN: 1, // 1=Operação tributável
+              cLocIncid: codMun,
+              pAliq: (aliq * 100).toFixed(2),
+              tpRetISSQN: 1, // 1=Não retido
+            },
+            totTrib: {
+              vTotTrib: vISS.toFixed(2),
+              pTotTribMun: (aliq * 100).toFixed(2),
+            },
+          },
+        },
+      },
+    },
   };
+
+  const builder = new XMLBuilder({
+    ignoreAttributes: false,
+    attributeNamePrefix: "@_",
+    format: false,
+    suppressEmptyNode: true,
+  });
+
+  return '<?xml version="1.0" encoding="UTF-8"?>' + builder.build(dpsObj);
 }
 
-export async function consultarNfse(_numero: string): Promise<RespostaEmissao> {
-  return { ok: false, erro: "Consulta ainda não implementada." };
+// ─── Assinatura Digital ──────────────────────────────────────────────────────
+
+export function assinarXml(xml: string): string {
+  const { pemCert, pemKey } = carregarCertificado();
+
+  const sig = new SignedXml({
+    privateKey: pemKey,
+    publicCert: pemCert,
+    signatureAlgorithm: "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256",
+    canonicalizationAlgorithm: "http://www.w3.org/TR/2001/REC-xml-c14n-20010315",
+  });
+
+  sig.addReference({
+    xpath: "//*[local-name(.)='infDPS']",
+    digestAlgorithm: "http://www.w3.org/2001/04/xmlenc#sha256",
+    transforms: [
+      "http://www.w3.org/2000/09/xmldsig#enveloped-signature",
+      "http://www.w3.org/TR/2001/REC-xml-c14n-20010315",
+    ],
+  });
+
+  sig.computeSignature(xml, {
+    location: { reference: "//*[local-name(.)='infDPS']", action: "after" },
+  });
+
+  return sig.getSignedXml();
 }
 
-export async function cancelarNfse(_numero: string, _motivo: string): Promise<RespostaEmissao> {
-  return { ok: false, erro: "Cancelamento ainda não implementado." };
+// ─── Envio ao Portal Nacional ────────────────────────────────────────────────
+
+async function postMtls(url: string, body: Buffer, headers: Record<string, string>): Promise<{ status: number; body: string }> {
+  const { pemCert, pemKey } = carregarCertificado();
+
+  return new Promise((resolve, reject) => {
+    const u = new URL(url);
+    const req = https.request({
+      hostname: u.hostname,
+      port: u.port || 443,
+      path: u.pathname + u.search,
+      method: "POST",
+      headers: { ...headers, "Content-Length": body.length.toString() },
+      cert: pemCert,
+      key: pemKey,
+      rejectUnauthorized: true,
+    }, (res) => {
+      const chunks: Buffer[] = [];
+      res.on("data", (c) => chunks.push(c));
+      res.on("end", () => {
+        const buf = Buffer.concat(chunks);
+        resolve({ status: res.statusCode || 0, body: buf.toString("utf8") });
+      });
+    });
+    req.on("error", reject);
+    req.write(body);
+    req.end();
+  });
+}
+
+// ─── Funções públicas ────────────────────────────────────────────────────────
+
+export async function emitirNfse(dados: DadosDPS, opts?: { serie?: string; numero?: string }): Promise<RespostaEmissao> {
+  if (!nfseConfigurada()) {
+    return { ok: false, erro: "NFS-e não configurada (faltam env vars)." };
+  }
+
+  try {
+    const serie = opts?.serie || "00001";
+    const numero = opts?.numero || String(Date.now()).slice(-9);
+
+    const xmlDps = montarDpsXml(dados, { serie, numero });
+    const xmlAssinado = assinarXml(xmlDps);
+
+    // O Portal Nacional aceita o XML diretamente — o gzip é opcional
+    // dependendo do header Content-Encoding. Vamos tentar JSON com DPS dentro primeiro
+    // (formato esperado pela API REST do gov.br).
+
+    const url = `${endpointBase()}/nfse`;
+    const payload = Buffer.from(xmlAssinado, "utf8");
+    const gzipped = gzipSync(payload);
+
+    const res = await postMtls(url, gzipped, {
+      "Content-Type": "application/xml",
+      "Content-Encoding": "gzip",
+      "Accept": "application/json",
+    });
+
+    if (res.status >= 200 && res.status < 300) {
+      try {
+        const json = JSON.parse(res.body);
+        return {
+          ok: true,
+          numeroNfse: json.nfse?.numeroNfse || json.numeroNfse || "",
+          codigoVerificacao: json.nfse?.codigoVerificacao || json.codigoVerificacao || "",
+          xmlNfse: json.nfse?.xml || json.xml || "",
+          xmlDps: xmlAssinado,
+        };
+      } catch {
+        // Resposta pode vir em XML
+        return {
+          ok: true,
+          numeroNfse: "",
+          codigoVerificacao: "",
+          xmlNfse: res.body,
+          xmlDps: xmlAssinado,
+        };
+      }
+    }
+
+    // Tentar parsear erro
+    let mensagemErro = `HTTP ${res.status}`;
+    try {
+      const json = JSON.parse(res.body);
+      mensagemErro = json.erro || json.message || json.mensagem || JSON.stringify(json).slice(0, 500);
+    } catch {
+      const parser = new XMLParser({ ignoreAttributes: false });
+      try {
+        const obj = parser.parse(res.body);
+        mensagemErro = JSON.stringify(obj).slice(0, 500);
+      } catch {
+        mensagemErro = res.body.slice(0, 500);
+      }
+    }
+
+    return { ok: false, erro: mensagemErro, detalhes: { status: res.status, body: res.body.slice(0, 1000) } };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Erro desconhecido";
+    return { ok: false, erro: msg };
+  }
+}
+
+export async function consultarNfse(numero: string): Promise<RespostaEmissao> {
+  if (!nfseConfigurada()) return { ok: false, erro: "NFS-e não configurada." };
+
+  try {
+    const cnpj = soDigitos(process.env.NFSE_CNPJ_EMITENTE!);
+    const url = `${endpointBase()}/nfse/${cnpj}/${numero}`;
+
+    const { pemCert, pemKey } = carregarCertificado();
+    const u = new URL(url);
+    const res = await new Promise<{ status: number; body: string }>((resolve, reject) => {
+      const req = https.request({
+        hostname: u.hostname,
+        path: u.pathname,
+        method: "GET",
+        cert: pemCert,
+        key: pemKey,
+      }, (resp) => {
+        const chunks: Buffer[] = [];
+        resp.on("data", (c) => chunks.push(c));
+        resp.on("end", () => resolve({ status: resp.statusCode || 0, body: Buffer.concat(chunks).toString("utf8") }));
+      });
+      req.on("error", reject);
+      req.end();
+    });
+
+    if (res.status >= 200 && res.status < 300) {
+      return { ok: true, numeroNfse: numero, codigoVerificacao: "", xmlNfse: res.body, xmlDps: "" };
+    }
+    return { ok: false, erro: `HTTP ${res.status}`, detalhes: res.body };
+  } catch (e) {
+    return { ok: false, erro: e instanceof Error ? e.message : "Erro" };
+  }
+}
+
+export async function cancelarNfse(numero: string, motivo: string): Promise<RespostaEmissao> {
+  if (!nfseConfigurada()) return { ok: false, erro: "NFS-e não configurada." };
+  // TODO: implementar cancelamento conforme spec do Portal Nacional
+  return { ok: false, erro: `Cancelamento ainda não implementado (recebido: ${numero}, ${motivo})` };
 }
