@@ -501,7 +501,7 @@ export async function consultarNfse(numero: string): Promise<RespostaEmissao> {
 export async function baixarDanfse(chaveAcesso: string): Promise<{ ok: true; pdf: Buffer } | { ok: false; erro: string; status?: number; body?: string }> {
   if (!nfseConfigurada()) return { ok: false, erro: "NFS-e não configurada." };
   try {
-    const url = `${endpointAdn()}/contribuintes/danfse/${chaveAcesso}`;
+    const url = `${endpointAdn()}/danfse/${chaveAcesso}`;
     const { pemCert, pemKey } = carregarCertificado();
     const u = new URL(url);
 
