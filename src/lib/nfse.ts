@@ -264,7 +264,7 @@ export function assinarXml(xml: string): string {
 
 // ─── Envio ao Portal Nacional ────────────────────────────────────────────────
 
-async function postMtls(url: string, body: Buffer, headers: Record<string, string>): Promise<{ status: number; body: string }> {
+async function postMtls(url: string, body: Buffer, headers: Record<string, string>): Promise<{ status: number; body: string; headers: Record<string, string | string[] | undefined> }> {
   const { pemCert, pemKey } = carregarCertificado();
 
   return new Promise((resolve, reject) => {
@@ -283,13 +283,45 @@ async function postMtls(url: string, body: Buffer, headers: Record<string, strin
       res.on("data", (c) => chunks.push(c));
       res.on("end", () => {
         const buf = Buffer.concat(chunks);
-        resolve({ status: res.statusCode || 0, body: buf.toString("utf8") });
+        resolve({
+          status: res.statusCode || 0,
+          body: buf.toString("utf8"),
+          headers: res.headers as Record<string, string | string[] | undefined>,
+        });
       });
     });
     req.on("error", reject);
     req.write(body);
     req.end();
   });
+}
+
+export async function diagnosticarConexao(): Promise<{ ok: boolean; mensagem: string; detalhes: unknown }> {
+  if (!nfseConfigurada()) return { ok: false, mensagem: "NFS-e não configurada", detalhes: null };
+
+  try {
+    const url = `${endpointBase()}/nfse`;
+    const res = await postMtls(url, Buffer.from(""), {
+      "Content-Type": "application/xml",
+      "Accept": "application/json",
+    });
+    return {
+      ok: true,
+      mensagem: `Conectou! Status HTTP: ${res.status}`,
+      detalhes: {
+        endpoint: url,
+        status: res.status,
+        headers: res.headers,
+        body: res.body.slice(0, 2000),
+      },
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      mensagem: e instanceof Error ? e.message : "Erro de conexão",
+      detalhes: e,
+    };
+  }
 }
 
 // ─── Funções públicas ────────────────────────────────────────────────────────
@@ -331,7 +363,6 @@ export async function emitirNfse(dados: DadosDPS, opts?: { serie?: string; numer
           xmlDps: xmlAssinado,
         };
       } catch {
-        // Resposta pode vir em XML
         return {
           ok: true,
           numeroNfse: "",
@@ -342,22 +373,45 @@ export async function emitirNfse(dados: DadosDPS, opts?: { serie?: string; numer
       }
     }
 
-    // Tentar parsear erro
+    // Erro — captura tudo possível
     let mensagemErro = `HTTP ${res.status}`;
-    try {
-      const json = JSON.parse(res.body);
-      mensagemErro = json.erro || json.message || json.mensagem || JSON.stringify(json).slice(0, 500);
-    } catch {
-      const parser = new XMLParser({ ignoreAttributes: false });
+    const bodyTrim = res.body.trim();
+    if (bodyTrim.length === 0) {
+      mensagemErro = `HTTP ${res.status} — resposta vazia. Content-Type: ${res.headers["content-type"] || "?"}`;
+    } else {
       try {
-        const obj = parser.parse(res.body);
-        mensagemErro = JSON.stringify(obj).slice(0, 500);
+        const json = JSON.parse(res.body);
+        const m = json.erro || json.message || json.mensagem || json.error;
+        if (m && typeof m === "string") {
+          mensagemErro = `HTTP ${res.status}: ${m}`;
+        } else if (Object.keys(json).length === 0) {
+          mensagemErro = `HTTP ${res.status} — resposta {} (objeto vazio). Headers: ${JSON.stringify(res.headers).slice(0, 300)}`;
+        } else {
+          mensagemErro = `HTTP ${res.status}: ${JSON.stringify(json).slice(0, 500)}`;
+        }
       } catch {
-        mensagemErro = res.body.slice(0, 500);
+        const parser = new XMLParser({ ignoreAttributes: false });
+        try {
+          const obj = parser.parse(res.body);
+          mensagemErro = `HTTP ${res.status}: ${JSON.stringify(obj).slice(0, 500)}`;
+        } catch {
+          mensagemErro = `HTTP ${res.status}: ${res.body.slice(0, 500)}`;
+        }
       }
     }
 
-    return { ok: false, erro: mensagemErro, detalhes: { status: res.status, body: res.body.slice(0, 1000) } };
+    return {
+      ok: false,
+      erro: mensagemErro,
+      detalhes: {
+        status: res.status,
+        headers: res.headers,
+        body: res.body.slice(0, 2000),
+        urlEnviado: url,
+        tamanhoEnvio: payload.length,
+        tamanhoEnvioGzip: gzipped.length,
+      },
+    };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Erro desconhecido";
     return { ok: false, erro: msg };

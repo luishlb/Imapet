@@ -127,7 +127,9 @@ export default function EmitirNotaModal({ exameId, onClose, onEmitida }: Props) 
         });
         onEmitida?.();
       } else {
-        setResultado({ ok: false, mensagem: data.erro || "Erro ao emitir." });
+        const erro = data.erro || "Erro ao emitir.";
+        const det = data.detalhes ? `\n\n--- Detalhes ---\n${JSON.stringify(data.detalhes, null, 2).slice(0, 1500)}` : "";
+        setResultado({ ok: false, mensagem: erro + det });
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Erro de rede";
@@ -218,7 +220,7 @@ export default function EmitirNotaModal({ exameId, onClose, onEmitida }: Props) 
 
             {resultado && (
               <div
-                className={`rounded-xl px-4 py-3 text-sm ${
+                className={`rounded-xl px-4 py-3 text-xs whitespace-pre-wrap break-words max-h-96 overflow-y-auto font-mono ${
                   resultado.ok ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-800"
                 }`}
               >
