@@ -150,11 +150,9 @@ export function montarDpsXml(dados: DadosDPS, params: {
     ? { CPF: soDigitos(t.documento) }
     : { CNPJ: soDigitos(t.documento) };
 
-  // opSimpNac (TSOpSimpNac): 1=Não optante, 2=Optante.
-  // Em "Produção Restrita" do gov.br o cadastro da empresa não está sincronizado com a Receita,
-  // então a validação E0160 só passa com opSimpNac=1 mesmo a empresa sendo SN na vida real.
-  // Pra produção real, NFSE_OP_SIMP_NAC pode ser sobrescrito pra 2.
-  const tribOpSimples = parseInt(process.env.NFSE_OP_SIMP_NAC || "1", 10);
+  // opSimpNac (TSOpSimpNac): 1=Não optante, 2=MEI, 3=Optante ME/EPP SN
+  // IMAPET é LTDA Simples Nacional → 3
+  const tribOpSimples = parseInt(process.env.NFSE_OP_SIMP_NAC || "3", 10);
 
   const dpsObj = {
     DPS: {
@@ -174,9 +172,9 @@ export function montarDpsXml(dados: DadosDPS, params: {
           CNPJ: cnpjEmit,
           IM: imEmit,
           regTrib: {
-            opSimpNac: tribOpSimples, // 1=Não optante, 2=Optante
-            // Quando optante (2), precisa do regime de apuração SN
-            ...(tribOpSimples === 2 ? { regApTribSN: 1 } : {}),
+            opSimpNac: tribOpSimples, // 1=Não optante, 2=MEI, 3=ME/EPP SN
+            // Optante SN (2 ou 3) precisa do regime de apuração
+            ...(tribOpSimples >= 2 ? { regApTribSN: 1 } : {}),
             regEspTrib: 0,
           },
         },
