@@ -131,7 +131,8 @@ export function montarDpsXml(dados: DadosDPS, params: {
   const imEmit = soDigitos(process.env.NFSE_INSCRICAO_MUNICIPAL!);
   const codMun = process.env.NFSE_CODIGO_MUNICIPIO || "2611606";
   const aliq = dados.aliquotaIss ?? parseFloat(process.env.NFSE_ALIQUOTA_ISS || "0.02");
-  const codTribNac = dados.codigoServicoNacional || process.env.NFSE_CODIGO_SERVICO_NACIONAL || "05.03.01";
+  // cTribNac pelo padrão XSD aceita só dígitos (sem pontos)
+  const codTribNac = soDigitos(dados.codigoServicoNacional || process.env.NFSE_CODIGO_SERVICO_NACIONAL || "05.03.01");
   const codTribMun = dados.codigoServicoMunicipal || process.env.NFSE_CODIGO_SERVICO || "501";
 
   const idDps = gerarIdDps(codMun, 2, cnpjEmit, params.serie, params.numero);
