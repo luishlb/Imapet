@@ -202,8 +202,6 @@ export function montarDpsXml(dados: DadosDPS, params: {
           trib: {
             tribMun: {
               tribISSQN: 1, // 1=Operação tributável
-              cLocIncid: codMun,
-              pAliq: (aliq * 100).toFixed(2),
               tpRetISSQN: 1, // 1=Não retido
             },
             totTrib: {
