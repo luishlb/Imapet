@@ -188,7 +188,7 @@ export default function NotasPage() {
         )}
       </main>
 
-      {emitindo && <EmitirNotaModal onClose={() => setEmitindo(false)} onEmitida={() => { setEmitindo(false); carregar(); }} />}
+      {emitindo && <EmitirNotaModal onClose={() => setEmitindo(false)} onEmitida={carregar} />}
     </div>
   );
 }
