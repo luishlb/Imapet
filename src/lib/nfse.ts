@@ -150,8 +150,11 @@ export function montarDpsXml(dados: DadosDPS, params: {
     ? { CPF: soDigitos(t.documento) }
     : { CNPJ: soDigitos(t.documento) };
 
-  // opSimpNac (TSOpSimpNac): valores limitados — 1=Não optante, 2=Optante
-  const tribOpSimples = (process.env.NFSE_REGIME_TRIBUTARIO || "").toLowerCase().includes("simples") ? 2 : 1;
+  // opSimpNac (TSOpSimpNac): 1=Não optante, 2=Optante.
+  // Em "Produção Restrita" do gov.br o cadastro da empresa não está sincronizado com a Receita,
+  // então a validação E0160 só passa com opSimpNac=1 mesmo a empresa sendo SN na vida real.
+  // Pra produção real, NFSE_OP_SIMP_NAC pode ser sobrescrito pra 2.
+  const tribOpSimples = parseInt(process.env.NFSE_OP_SIMP_NAC || "1", 10);
 
   const dpsObj = {
     DPS: {
