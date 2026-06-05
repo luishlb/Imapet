@@ -166,20 +166,10 @@ export function montarDpsXml(dados: DadosDPS, params: {
         prest: {
           CNPJ: cnpjEmit,
           IM: imEmit,
-          xNome: "IMAPET DIAGNOSTICO VETERINARIO POR IMAGEM LTDA",
           regTrib: {
             opSimpNac: tribOpSimples, // 1=Simples Nacional, 3=Regime normal
             regEspTrib: 0,
           },
-          end: {
-            endNac: { cMun: codMun, CEP: "50050000" },
-            xLgr: "RUA DA AURORA",
-            nro: "295",
-            xCpl: "APTO 0502",
-            xBairro: "BOA VISTA",
-          },
-          fone: "8196741525",
-          email: "imapet@imapet.com.br",
         },
         toma: {
           ...tomadorDoc,
