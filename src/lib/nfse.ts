@@ -9,8 +9,8 @@ import { gzipSync } from "node:zlib";
 import https from "node:https";
 
 const ENDPOINTS = {
-  homologacao: "https://adn.producaorestrita.nfse.gov.br",
-  producao: "https://adn.nfse.gov.br",
+  homologacao: "https://sefin.producaorestrita.nfse.gov.br/SefinNacional",
+  producao: "https://sefin.nfse.gov.br/SefinNacional",
 } as const;
 
 export type Ambiente = "homologacao" | "producao";
@@ -116,9 +116,10 @@ export function carregarCertificado() {
 
 // ─── Montagem do DPS XML ─────────────────────────────────────────────────────
 
-function gerarIdDps(cnpj: string, serie: string, numero: string): string {
-  // ID format: DPS + CNPJ(14) + SERIE(5) + NUMERO(15) — total 39 chars
-  return `DPS${cnpj.padStart(14, "0")}${serie.padStart(5, "0")}${numero.padStart(15, "0")}`;
+function gerarIdDps(cMun: string, tpInsc: 1 | 2, doc: string, serie: string, numero: string): string {
+  // Formato ABRASF Nacional: DPS + cMun(7) + tpInsc(1) + nInsc(14, zero-padded) + serie(5) + nDPS(15)
+  // tpInsc: 1=CPF, 2=CNPJ
+  return `DPS${cMun.padStart(7, "0")}${tpInsc}${doc.padStart(14, "0")}${serie.padStart(5, "0")}${numero.padStart(15, "0")}`;
 }
 
 export function montarDpsXml(dados: DadosDPS, params: {
@@ -133,7 +134,7 @@ export function montarDpsXml(dados: DadosDPS, params: {
   const codTribNac = dados.codigoServicoNacional || process.env.NFSE_CODIGO_SERVICO_NACIONAL || "05.03.01";
   const codTribMun = dados.codigoServicoMunicipal || process.env.NFSE_CODIGO_SERVICO || "501";
 
-  const idDps = gerarIdDps(cnpjEmit, params.serie, params.numero);
+  const idDps = gerarIdDps(codMun, 2, cnpjEmit, params.serie, params.numero);
   const dhEmi = new Date().toISOString().replace(/\.\d{3}Z$/, "-03:00");
   const dCompet = (dados.dataPrestacao || new Date().toISOString().slice(0, 10));
 
@@ -301,13 +302,13 @@ export async function diagnosticarConexao(): Promise<{ ok: boolean; mensagem: st
 
   try {
     const url = `${endpointBase()}/nfse`;
-    const res = await postMtls(url, Buffer.from(""), {
-      "Content-Type": "application/xml",
+    const res = await postMtls(url, Buffer.from("{}"), {
+      "Content-Type": "application/json",
       "Accept": "application/json",
     });
     return {
       ok: true,
-      mensagem: `Conectou! Status HTTP: ${res.status}`,
+      mensagem: `Conectou em ${url}. Status HTTP: ${res.status}`,
       detalhes: {
         endpoint: url,
         status: res.status,
@@ -338,17 +339,17 @@ export async function emitirNfse(dados: DadosDPS, opts?: { serie?: string; numer
     const xmlDps = montarDpsXml(dados, { serie, numero });
     const xmlAssinado = assinarXml(xmlDps);
 
-    // O Portal Nacional aceita o XML diretamente — o gzip é opcional
-    // dependendo do header Content-Encoding. Vamos tentar JSON com DPS dentro primeiro
-    // (formato esperado pela API REST do gov.br).
+    // Sefin Nacional aceita JSON com o XML assinado em gzip+base64
+    // Campo: dpsXmlGZipB64
+    const xmlBuf = Buffer.from(xmlAssinado, "utf8");
+    const gzipped = gzipSync(xmlBuf);
+    const dpsXmlGZipB64 = gzipped.toString("base64");
 
     const url = `${endpointBase()}/nfse`;
-    const payload = Buffer.from(xmlAssinado, "utf8");
-    const gzipped = gzipSync(payload);
+    const payload = Buffer.from(JSON.stringify({ dpsXmlGZipB64 }), "utf8");
 
-    const res = await postMtls(url, gzipped, {
-      "Content-Type": "application/xml",
-      "Content-Encoding": "gzip",
+    const res = await postMtls(url, payload, {
+      "Content-Type": "application/json",
       "Accept": "application/json",
     });
 
@@ -408,8 +409,16 @@ export async function emitirNfse(dados: DadosDPS, opts?: { serie?: string; numer
         headers: res.headers,
         body: res.body.slice(0, 2000),
         urlEnviado: url,
-        tamanhoEnvio: payload.length,
-        tamanhoEnvioGzip: gzipped.length,
+        tamanhoJson: payload.length,
+        tamanhoXml: xmlBuf.length,
+        tamanhoGzipB64: dpsXmlGZipB64.length,
+        idDps: gerarIdDps(
+          process.env.NFSE_CODIGO_MUNICIPIO || "2611606",
+          2,
+          soDigitos(process.env.NFSE_CNPJ_EMITENTE!),
+          serie,
+          numero,
+        ),
       },
     };
   } catch (e) {
