@@ -150,7 +150,9 @@ export function montarDpsXml(dados: DadosDPS, params: {
     ? { CPF: soDigitos(t.documento) }
     : { CNPJ: soDigitos(t.documento) };
 
-  const tribOpSimples = (process.env.NFSE_REGIME_TRIBUTARIO || "").toLowerCase().includes("simples") ? 1 : 3;
+  // opSimpNac (NFS-e Nacional): 1=Não optante; 2=Optante MEI; 3=Optante ME/EPP regime normal; 4=Optante ME/EPP SN
+  // IMAPET é LTDA Simples Nacional → 4 (optante ME/EPP no Simples Nacional)
+  const tribOpSimples = (process.env.NFSE_REGIME_TRIBUTARIO || "").toLowerCase().includes("simples") ? 4 : 1;
 
   const dpsObj = {
     DPS: {
