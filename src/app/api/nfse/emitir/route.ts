@@ -33,11 +33,11 @@ export async function POST(req: NextRequest) {
       exame_id: exameId || null,
       ambiente: ambienteAtual(),
       status: resultado.ok ? "autorizada" : "rejeitada",
-      numero_nfse: resultado.ok ? resultado.numeroNfse : null,
-      codigo_verificacao: resultado.ok ? resultado.codigoVerificacao : null,
+      numero_nfse: resultado.ok && resultado.numeroNfse ? resultado.numeroNfse : null,
+      codigo_verificacao: resultado.ok && resultado.codigoVerificacao ? resultado.codigoVerificacao : null,
       erro: resultado.ok ? null : resultado.erro,
       tomador_nome: dados.tomador.nome,
-      tomador_documento: tomadorDoc,
+      tomador_documento: tomadorDoc || null,
       tomador_tipo_doc: tomadorTipo,
       tomador_email: dados.tomador.email || null,
       descricao: dados.descricao,
@@ -49,11 +49,20 @@ export async function POST(req: NextRequest) {
       emitida_em: resultado.ok ? new Date().toISOString() : null,
     };
 
-    await sb.from("notas_fiscais").insert(linha);
+    const { error: insertErr } = await sb.from("notas_fiscais").insert(linha);
+    if (insertErr) {
+      console.error("Erro ao persistir nota:", insertErr);
+      // Não falha o request — a nota foi emitida no gov.br. Retorna sucesso com aviso.
+      return NextResponse.json({
+        ...resultado,
+        avisoBanco: `Nota emitida no gov.br mas falhou ao salvar localmente: ${insertErr.message}`,
+      }, { status: resultado.ok ? 200 : 400 });
+    }
 
     return NextResponse.json(resultado, { status: resultado.ok ? 200 : 400 });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "erro desconhecido";
+    console.error("Erro na API de emissão:", e);
     return NextResponse.json({ ok: false, erro: msg }, { status: 500 });
   }
 }

@@ -354,11 +354,28 @@ export async function emitirNfse(dados: DadosDPS, opts?: { serie?: string; numer
     if (res.status >= 200 && res.status < 300) {
       try {
         const json = JSON.parse(res.body);
+        // Vasculha vários caminhos onde gov.br pode ter colocado os identificadores
+        const numero =
+          json.nfse?.numeroNfse ||
+          json.nfse?.numero ||
+          json.numeroNfse ||
+          json.numero ||
+          json.infNFSe?.nNFSe ||
+          json.nNFSe ||
+          json.chNFSe ||
+          "";
+        const cv =
+          json.nfse?.codigoVerificacao ||
+          json.codigoVerificacao ||
+          json.infNFSe?.codVerif ||
+          json.codVerif ||
+          "";
+        const xml = json.nfse?.xml || json.xml || JSON.stringify(json);
         return {
           ok: true,
-          numeroNfse: json.nfse?.numeroNfse || json.numeroNfse || "",
-          codigoVerificacao: json.nfse?.codigoVerificacao || json.codigoVerificacao || "",
-          xmlNfse: json.nfse?.xml || json.xml || "",
+          numeroNfse: String(numero),
+          codigoVerificacao: String(cv),
+          xmlNfse: xml,
           xmlDps: xmlAssinado,
         };
       } catch {
