@@ -189,7 +189,7 @@ export function montarDpsXml(dados: DadosDPS, params: {
           } : {}),
         },
         serv: {
-          locPrest: { cLocPrestacao: codMun, cPaisPrestacao: "BR" },
+          locPrest: { cLocPrestacao: codMun },
           cServ: {
             cTribNac: codTribNac,
             cTribMun: codTribMun,
