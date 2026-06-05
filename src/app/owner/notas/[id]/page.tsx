@@ -156,20 +156,32 @@ export default function NotaDetalhePage() {
         {/* PDF embed */}
         {pdfUrl && (
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-            <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+            <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
               <p className="text-sm font-semibold text-text-main">Nota Fiscal — DANFSe oficial</p>
-              <a href={pdfUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">
-                Abrir em nova aba ↗
-              </a>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    const iframe = document.getElementById("danfse-iframe") as HTMLIFrameElement;
+                    if (iframe) iframe.src = `${pdfUrl}?t=${Date.now()}`;
+                  }}
+                  className="text-xs text-text-muted hover:text-primary"
+                >
+                  ↻ Recarregar
+                </button>
+                <a href={pdfUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">
+                  Abrir em nova aba ↗
+                </a>
+              </div>
             </div>
             <iframe
+              id="danfse-iframe"
               src={pdfUrl}
               className="w-full"
               style={{ height: "80vh", border: "none" }}
               title="DANFSe oficial"
             />
             <p className="text-[11px] text-text-muted px-5 py-2 bg-gray-50">
-              Se o PDF não carregar acima, use o botão <strong>📄 Baixar</strong> no topo.
+              <strong>Em produção, o PDF pode demorar alguns segundos pra ficar disponível</strong> após a emissão. Se aparecer erro, clica em <strong>↻ Recarregar</strong> ou tenta de novo em 1 minuto.
             </p>
           </div>
         )}

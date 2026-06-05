@@ -498,40 +498,72 @@ export async function consultarNfse(numero: string): Promise<RespostaEmissao> {
   }
 }
 
-export async function baixarDanfse(chaveAcesso: string): Promise<{ ok: true; pdf: Buffer } | { ok: false; erro: string; status?: number; body?: string }> {
-  if (!nfseConfigurada()) return { ok: false, erro: "NFS-e não configurada." };
-  try {
-    const url = `${endpointAdn()}/danfse/${chaveAcesso}`;
-    const { pemCert, pemKey } = carregarCertificado();
-    const u = new URL(url);
-
-    return await new Promise((resolve, reject) => {
-      const req = https.request({
-        hostname: u.hostname,
-        port: u.port || 443,
-        path: u.pathname,
-        method: "GET",
-        cert: pemCert,
-        key: pemKey,
-        headers: { Accept: "application/pdf" },
-      }, (res) => {
-        const chunks: Buffer[] = [];
-        res.on("data", (c) => chunks.push(c));
-        res.on("end", () => {
-          const buf = Buffer.concat(chunks);
-          if ((res.statusCode || 0) >= 200 && (res.statusCode || 0) < 300) {
-            resolve({ ok: true, pdf: buf });
-          } else {
-            resolve({ ok: false, erro: `HTTP ${res.statusCode}`, status: res.statusCode, body: buf.toString("utf8").slice(0, 500) });
-          }
+async function tentarBaixarDanfse(url: string): Promise<{ status: number; pdf: Buffer; contentType: string }> {
+  const { pemCert, pemKey } = carregarCertificado();
+  const u = new URL(url);
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: u.hostname,
+      port: u.port || 443,
+      path: u.pathname,
+      method: "GET",
+      cert: pemCert,
+      key: pemKey,
+      headers: { Accept: "application/pdf" },
+    }, (res) => {
+      const chunks: Buffer[] = [];
+      res.on("data", (c) => chunks.push(c));
+      res.on("end", () => {
+        resolve({
+          status: res.statusCode || 0,
+          pdf: Buffer.concat(chunks),
+          contentType: String(res.headers["content-type"] || ""),
         });
       });
-      req.on("error", reject);
-      req.end();
     });
-  } catch (e) {
-    return { ok: false, erro: e instanceof Error ? e.message : "Erro" };
+    req.on("error", reject);
+    req.end();
+  });
+}
+
+export async function baixarDanfse(chaveAcesso: string): Promise<{ ok: true; pdf: Buffer } | { ok: false; erro: string; status?: number; body?: string }> {
+  if (!nfseConfigurada()) return { ok: false, erro: "NFS-e não configurada." };
+
+  // Lista de paths possíveis pra tentar — gov.br produção vs homologação tem variações
+  const base = endpointAdn();
+  const paths = [
+    `${base}/danfse/${chaveAcesso}`,
+    `${base}/contribuintes/danfse/${chaveAcesso}`,
+    `${base}/Danfse/${chaveAcesso}`,
+  ];
+
+  let ultimoErro: { status: number; body: string } = { status: 0, body: "" };
+
+  // 1 tentativa imediata + 1 retry após 2s (DANFSe leva alguns segundos pra ser gerado em produção)
+  for (let tentativa = 0; tentativa < 2; tentativa++) {
+    if (tentativa > 0) {
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+    for (const url of paths) {
+      try {
+        const r = await tentarBaixarDanfse(url);
+        // Sucesso: status 2xx + Content-Type PDF
+        if (r.status >= 200 && r.status < 300 && r.contentType.includes("pdf")) {
+          return { ok: true, pdf: r.pdf };
+        }
+        ultimoErro = { status: r.status, body: r.pdf.toString("utf8").slice(0, 300) };
+      } catch (e) {
+        ultimoErro = { status: 0, body: e instanceof Error ? e.message : "erro" };
+      }
+    }
   }
+
+  return {
+    ok: false,
+    erro: `Não foi possível baixar o DANFSe (status ${ultimoErro.status}). O PDF pode estar sendo gerado — tente novamente em alguns minutos.`,
+    status: ultimoErro.status,
+    body: ultimoErro.body,
+  };
 }
 
 export async function cancelarNfse(numero: string, motivo: string): Promise<RespostaEmissao> {
