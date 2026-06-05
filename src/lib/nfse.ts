@@ -136,7 +136,9 @@ export function montarDpsXml(dados: DadosDPS, params: {
   const codTribMun = dados.codigoServicoMunicipal || process.env.NFSE_CODIGO_SERVICO || "501";
 
   const idDps = gerarIdDps(codMun, 2, cnpjEmit, params.serie, params.numero);
-  const dhEmi = new Date().toISOString().replace(/\.\d{3}Z$/, "-03:00");
+  // dhEmi em horário de Brasília (-03:00) — ajustamos os ms pra que o ISO output já bata
+  const agoraBrasilia = new Date(Date.now() - 3 * 60 * 60 * 1000);
+  const dhEmi = agoraBrasilia.toISOString().replace(/\.\d{3}Z$/, "-03:00");
   const dCompet = (dados.dataPrestacao || new Date().toISOString().slice(0, 10));
 
   const valor = dados.valorServico;
