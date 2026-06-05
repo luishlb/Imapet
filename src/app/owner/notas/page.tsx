@@ -164,28 +164,13 @@ export default function NotasPage() {
                               )}
                             </td>
                             <td className="px-3 py-2 text-right whitespace-nowrap">
-                              {n.numero_nfse && (
-                                <a
-                                  href={`/api/nfse/danfse/${n.numero_nfse}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center px-2 py-1 rounded-lg bg-primary/10 text-primary text-[11px] font-medium hover:bg-primary/20 mr-1"
-                                  title="Baixar PDF da NFS-e"
-                                >
-                                  📄
-                                </a>
-                              )}
-                              {n.nfse_pdf_url && (
-                                <a
-                                  href={n.nfse_pdf_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center px-2 py-1 rounded-lg bg-green-50 text-green-700 text-[11px] font-medium hover:bg-green-100"
-                                  title="PDF público (compartilhável)"
-                                >
-                                  🔗
-                                </a>
-                              )}
+                              <Link
+                                href={`/owner/notas/${n.id}`}
+                                className="inline-flex items-center px-2 py-1 rounded-lg bg-primary/10 text-primary text-[11px] font-medium hover:bg-primary/20"
+                                title="Ver DANFSe"
+                              >
+                                📄 Abrir
+                              </Link>
                             </td>
                           </tr>
                         );

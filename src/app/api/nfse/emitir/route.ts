@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     }
 
     console.log("[NFSE] Insert OK, id:", insertData?.id);
-    return NextResponse.json(resultado, { status: resultado.ok ? 200 : 400 });
+    return NextResponse.json({ ...resultado, notaId: insertData?.id }, { status: resultado.ok ? 200 : 400 });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "erro desconhecido";
     console.error("Erro na API de emissão:", e);

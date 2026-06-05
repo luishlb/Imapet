@@ -31,8 +31,7 @@ export default function EmitirNotaModal({ exameId, onClose, onEmitida }: Props) 
   const [exame, setExame] = useState<ExameVinculado | null>(null);
   const [carregando, setCarregando] = useState(!!exameId);
   const [emitindo, setEmitindo] = useState(false);
-  const [resultado, setResultado] = useState<{ ok: boolean; mensagem: string; chave?: string } | null>(null);
-  const [compartilhando, setCompartilhando] = useState(false);
+  const [resultado, setResultado] = useState<{ ok: boolean; mensagem: string; chave?: string; notaId?: string } | null>(null);
 
   const [tomador, setTomador] = useState<Tomador>({ nome: "", documento: "", email: "" });
   const [descricao, setDescricao] = useState("");
@@ -126,7 +125,7 @@ export default function EmitirNotaModal({ exameId, onClose, onEmitida }: Props) 
         const linhas = [`✓ Nota emitida com sucesso!`];
         if (chave) linhas.push(`Chave de acesso: ${chave}`);
         if (data.avisoBanco) linhas.push(`\n⚠️ ${data.avisoBanco}`);
-        setResultado({ ok: true, mensagem: linhas.join("\n"), chave });
+        setResultado({ ok: true, mensagem: linhas.join("\n"), chave, notaId: data.notaId });
         onEmitida?.();
       } else {
         const erro = data.erro || "Erro ao emitir.";
@@ -140,39 +139,6 @@ export default function EmitirNotaModal({ exameId, onClose, onEmitida }: Props) 
     setEmitindo(false);
   }
 
-  function baixarPdf() {
-    if (!resultado?.chave) return;
-    window.open(`/api/nfse/danfse/${resultado.chave}`, "_blank");
-  }
-
-  async function compartilhar() {
-    if (!resultado?.chave) return;
-    setCompartilhando(true);
-    try {
-      // Faz upload pro R2 pra ter URL pública e poder compartilhar
-      const res = await fetch(`/api/nfse/danfse/${resultado.chave}?upload=1`);
-      const data = await res.json();
-      if (!data.ok || !data.url) {
-        alert("Falha ao gerar link compartilhável: " + (data.erro || "erro"));
-        setCompartilhando(false);
-        return;
-      }
-      const texto = `Nota fiscal de serviço — IMAPET\n\nValor: R$ ${parseFloat(valor.replace(",", ".")).toFixed(2)}\nServiço: ${descricao}\n\nBaixar PDF:\n${data.url}\n\nChave de acesso: ${resultado.chave}`;
-      // Web Share API (mobile nativo)
-      if (typeof navigator !== "undefined" && navigator.share) {
-        try {
-          await navigator.share({ title: "NFS-e IMAPET", text: texto, url: data.url });
-          setCompartilhando(false);
-          return;
-        } catch { /* usuário cancelou ou fallback */ }
-      }
-      // Fallback: WhatsApp Web
-      window.open(`https://web.whatsapp.com/send?text=${encodeURIComponent(texto)}`, "_blank");
-    } catch (e) {
-      alert("Erro: " + (e instanceof Error ? e.message : "desconhecido"));
-    }
-    setCompartilhando(false);
-  }
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -264,22 +230,13 @@ export default function EmitirNotaModal({ exameId, onClose, onEmitida }: Props) 
               </div>
             )}
 
-            {resultado?.ok && resultado.chave && (
-              <div className="flex gap-2 flex-wrap">
-                <button
-                  onClick={baixarPdf}
-                  className="flex-1 bg-primary text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-primary-light transition flex items-center justify-center gap-2"
-                >
-                  📄 Baixar PDF
-                </button>
-                <button
-                  onClick={compartilhar}
-                  disabled={compartilhando}
-                  className="flex-1 bg-green-600 text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-green-700 transition flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {compartilhando ? "Preparando..." : "📤 Compartilhar"}
-                </button>
-              </div>
+            {resultado?.ok && resultado.notaId && (
+              <a
+                href={`/owner/notas/${resultado.notaId}`}
+                className="block w-full bg-primary text-white text-sm font-semibold py-3 rounded-xl hover:bg-primary-light transition text-center"
+              >
+                📄 Abrir DANFSe (baixar / compartilhar)
+              </a>
             )}
           </div>
         )}
