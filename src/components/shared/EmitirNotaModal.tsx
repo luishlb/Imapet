@@ -121,10 +121,11 @@ export default function EmitirNotaModal({ exameId, onClose, onEmitida }: Props) 
           mensagem: "⚠️ Módulo de NFS-e ainda não está configurado. O certificado A1 precisa ser cadastrado antes da primeira emissão.",
         });
       } else if (data.ok) {
-        setResultado({
-          ok: true,
-          mensagem: `✓ Nota emitida! Número: ${data.numeroNfse}`,
-        });
+        const linhas = [`✓ Nota emitida! Número: ${data.numeroNfse || "(vazio)"}`];
+        if (data.codigoVerificacao) linhas.push(`Código verificação: ${data.codigoVerificacao}`);
+        if (data.avisoBanco) linhas.push(`\n⚠️ ${data.avisoBanco}`);
+        linhas.push(`\n--- Resposta gov.br ---\n${(data.xmlNfse || "").slice(0, 1500)}`);
+        setResultado({ ok: true, mensagem: linhas.join("\n") });
         onEmitida?.();
       } else {
         const erro = data.erro || "Erro ao emitir.";
@@ -220,7 +221,7 @@ export default function EmitirNotaModal({ exameId, onClose, onEmitida }: Props) 
 
             {resultado && (
               <div
-                className={`rounded-xl px-4 py-3 text-xs whitespace-pre-wrap break-words max-h-96 overflow-y-auto font-mono ${
+                className={`rounded-xl px-4 py-3 text-[11px] whitespace-pre-wrap break-words max-h-[26rem] overflow-y-auto font-mono ${
                   resultado.ok ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-800"
                 }`}
               >
