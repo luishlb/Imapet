@@ -488,6 +488,42 @@ export async function consultarNfse(numero: string): Promise<RespostaEmissao> {
   }
 }
 
+export async function baixarDanfse(chaveAcesso: string): Promise<{ ok: true; pdf: Buffer } | { ok: false; erro: string; status?: number; body?: string }> {
+  if (!nfseConfigurada()) return { ok: false, erro: "NFS-e não configurada." };
+  try {
+    const url = `${endpointBase()}/danfse/${chaveAcesso}`;
+    const { pemCert, pemKey } = carregarCertificado();
+    const u = new URL(url);
+
+    return await new Promise((resolve, reject) => {
+      const req = https.request({
+        hostname: u.hostname,
+        port: u.port || 443,
+        path: u.pathname,
+        method: "GET",
+        cert: pemCert,
+        key: pemKey,
+        headers: { Accept: "application/pdf" },
+      }, (res) => {
+        const chunks: Buffer[] = [];
+        res.on("data", (c) => chunks.push(c));
+        res.on("end", () => {
+          const buf = Buffer.concat(chunks);
+          if ((res.statusCode || 0) >= 200 && (res.statusCode || 0) < 300) {
+            resolve({ ok: true, pdf: buf });
+          } else {
+            resolve({ ok: false, erro: `HTTP ${res.statusCode}`, status: res.statusCode, body: buf.toString("utf8").slice(0, 500) });
+          }
+        });
+      });
+      req.on("error", reject);
+      req.end();
+    });
+  } catch (e) {
+    return { ok: false, erro: e instanceof Error ? e.message : "Erro" };
+  }
+}
+
 export async function cancelarNfse(numero: string, motivo: string): Promise<RespostaEmissao> {
   if (!nfseConfigurada()) return { ok: false, erro: "NFS-e não configurada." };
   // TODO: implementar cancelamento conforme spec do Portal Nacional
