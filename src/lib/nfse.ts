@@ -13,6 +13,16 @@ const ENDPOINTS = {
   producao: "https://sefin.nfse.gov.br/SefinNacional",
 } as const;
 
+// O DANFSe (PDF) é servido pelo ADN, não pelo Sefin
+const ENDPOINTS_ADN = {
+  homologacao: "https://adn.producaorestrita.nfse.gov.br",
+  producao: "https://adn.nfse.gov.br",
+} as const;
+
+function endpointAdn(): string {
+  return ENDPOINTS_ADN[ambienteAtual()];
+}
+
 export type Ambiente = "homologacao" | "producao";
 
 export type TomadorPessoaFisica = {
@@ -491,7 +501,7 @@ export async function consultarNfse(numero: string): Promise<RespostaEmissao> {
 export async function baixarDanfse(chaveAcesso: string): Promise<{ ok: true; pdf: Buffer } | { ok: false; erro: string; status?: number; body?: string }> {
   if (!nfseConfigurada()) return { ok: false, erro: "NFS-e não configurada." };
   try {
-    const url = `${endpointBase()}/danfse/${chaveAcesso}`;
+    const url = `${endpointAdn()}/contribuintes/danfse/${chaveAcesso}`;
     const { pemCert, pemKey } = carregarCertificado();
     const u = new URL(url);
 
