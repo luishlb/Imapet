@@ -5,7 +5,7 @@
 import forge from "node-forge";
 import { SignedXml } from "xml-crypto";
 import { XMLBuilder, XMLParser } from "fast-xml-parser";
-import { gzipSync } from "node:zlib";
+import { gzipSync, gunzipSync } from "node:zlib";
 import https from "node:https";
 
 const ENDPOINTS = {
@@ -354,8 +354,9 @@ export async function emitirNfse(dados: DadosDPS, opts?: { serie?: string; numer
     if (res.status >= 200 && res.status < 300) {
       try {
         const json = JSON.parse(res.body);
-        // Vasculha vários caminhos onde gov.br pode ter colocado os identificadores
+        // Identificadores — a chave de acesso é o "número" oficial da NFS-e no Padrão Nacional
         const numero =
+          json.chaveAcesso ||
           json.nfse?.numeroNfse ||
           json.nfse?.numero ||
           json.numeroNfse ||
@@ -370,12 +371,23 @@ export async function emitirNfse(dados: DadosDPS, opts?: { serie?: string; numer
           json.infNFSe?.codVerif ||
           json.codVerif ||
           "";
-        const xml = json.nfse?.xml || json.xml || JSON.stringify(json);
+        // Resposta vem com nfseXmlGZipB64 — descomprime pra ter o XML em texto
+        let xmlNfse = json.nfse?.xml || json.xml || "";
+        if (json.nfseXmlGZipB64) {
+          try {
+            const buf = Buffer.from(json.nfseXmlGZipB64, "base64");
+            xmlNfse = gunzipSync(buf).toString("utf8");
+          } catch {
+            xmlNfse = JSON.stringify(json);
+          }
+        }
+        if (!xmlNfse) xmlNfse = JSON.stringify(json);
+
         return {
           ok: true,
           numeroNfse: String(numero),
           codigoVerificacao: String(cv),
-          xmlNfse: xml,
+          xmlNfse,
           xmlDps: xmlAssinado,
         };
       } catch {
