@@ -27,6 +27,22 @@ type Tomador = {
   email: string;
 };
 
+type Endereco = {
+  logradouro: string;
+  numero: string;
+  complemento: string;
+  bairro: string;
+  cidade: string;
+  uf: string;
+  cep: string;
+  codigoMunicipio: string;
+};
+
+const ENDERECO_VAZIO: Endereco = {
+  logradouro: "", numero: "", complemento: "", bairro: "",
+  cidade: "", uf: "", cep: "", codigoMunicipio: "",
+};
+
 export default function EmitirNotaModal({ exameId, onClose, onEmitida }: Props) {
   const [exame, setExame] = useState<ExameVinculado | null>(null);
   const [carregando, setCarregando] = useState(!!exameId);
@@ -34,8 +50,38 @@ export default function EmitirNotaModal({ exameId, onClose, onEmitida }: Props) 
   const [resultado, setResultado] = useState<{ ok: boolean; mensagem: string; chave?: string; notaId?: string } | null>(null);
 
   const [tomador, setTomador] = useState<Tomador>({ nome: "", documento: "", email: "" });
+  const [endereco, setEndereco] = useState<Endereco>(ENDERECO_VAZIO);
+  const [buscandoCnpj, setBuscandoCnpj] = useState(false);
   const [descricao, setDescricao] = useState("");
   const [valor, setValor] = useState("");
+
+  // Auto-busca endereço quando CNPJ válido for digitado
+  useEffect(() => {
+    const docDigitos = tomador.documento.replace(/\D/g, "");
+    if (tipoDocumento(tomador.documento) !== "CNPJ" || docDigitos.length !== 14) return;
+    let cancelado = false;
+    setBuscandoCnpj(true);
+    fetch(`https://brasilapi.com.br/api/cnpj/v1/${docDigitos}`)
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { razao_social?: string; nome_fantasia?: string; logradouro?: string; numero?: string; complemento?: string; bairro?: string; municipio?: string; uf?: string; cep?: string; codigo_municipio_ibge?: string | number } | null) => {
+        if (cancelado || !data) return;
+        // Preenche nome se ainda estiver vazio
+        setTomador(t => t.nome ? t : { ...t, nome: data.razao_social || data.nome_fantasia || "" });
+        // Preenche endereço
+        setEndereco({
+          logradouro: data.logradouro || "",
+          numero: String(data.numero || ""),
+          complemento: data.complemento || "",
+          bairro: data.bairro || "",
+          cidade: data.municipio || "",
+          uf: data.uf || "",
+          cep: String(data.cep || "").replace(/\D/g, ""),
+          codigoMunicipio: String(data.codigo_municipio_ibge || ""),
+        });
+      })
+      .finally(() => { if (!cancelado) setBuscandoCnpj(false); });
+    return () => { cancelado = true; };
+  }, [tomador.documento]);
 
   useEffect(() => {
     if (!exameId) return;
@@ -97,12 +143,25 @@ export default function EmitirNotaModal({ exameId, onClose, onEmitida }: Props) 
     }
 
     const tipoDoc = tipoDocumento(tomador.documento);
+    const enderecoPreenchido = endereco.logradouro && endereco.bairro && endereco.cep;
     const payload = {
       tomador: {
         tipo: tipoDoc || "CPF",
         documento: tomador.documento,
         nome: tomador.nome.trim(),
         email: tomador.email.trim() || undefined,
+        ...(enderecoPreenchido ? {
+          endereco: {
+            logradouro: endereco.logradouro,
+            numero: endereco.numero || "S/N",
+            complemento: endereco.complemento || undefined,
+            bairro: endereco.bairro,
+            cidade: endereco.cidade,
+            uf: endereco.uf,
+            cep: endereco.cep.replace(/\D/g, ""),
+            codigoMunicipio: endereco.codigoMunicipio || undefined,
+          },
+        } : {}),
       },
       descricao: descricao.trim(),
       valorServico: valorNum,
@@ -181,7 +240,10 @@ export default function EmitirNotaModal({ exameId, onClose, onEmitida }: Props) 
                   className="input text-sm"
                 />
                 {tomador.documento && (
-                  <p className="text-[11px] text-primary font-semibold">{tipoDocumento(tomador.documento)} detectado</p>
+                  <p className="text-[11px] text-primary font-semibold">
+                    {tipoDocumento(tomador.documento)} detectado
+                    {buscandoCnpj && " · buscando dados na Receita..."}
+                  </p>
                 )}
                 <input
                   type="email"
@@ -192,6 +254,34 @@ export default function EmitirNotaModal({ exameId, onClose, onEmitida }: Props) 
                 />
               </div>
             </div>
+
+            {(tipoDocumento(tomador.documento) === "CNPJ" || endereco.logradouro) && (
+              <div>
+                <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
+                  Endereço {endereco.logradouro && <span className="text-green-700 font-normal">· preenchido automaticamente</span>}
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  <input value={endereco.logradouro} onChange={e => setEndereco(en => ({ ...en, logradouro: e.target.value }))}
+                    placeholder="Logradouro" className="input text-sm col-span-2" />
+                  <input value={endereco.numero} onChange={e => setEndereco(en => ({ ...en, numero: e.target.value }))}
+                    placeholder="Nº" className="input text-sm" />
+                </div>
+                <input value={endereco.complemento} onChange={e => setEndereco(en => ({ ...en, complemento: e.target.value }))}
+                  placeholder="Complemento (opcional)" className="input text-sm mt-2" />
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  <input value={endereco.bairro} onChange={e => setEndereco(en => ({ ...en, bairro: e.target.value }))}
+                    placeholder="Bairro" className="input text-sm" />
+                  <input value={endereco.cep} onChange={e => setEndereco(en => ({ ...en, cep: e.target.value }))}
+                    placeholder="CEP" className="input text-sm" />
+                </div>
+                <div className="grid grid-cols-3 gap-2 mt-2">
+                  <input value={endereco.cidade} onChange={e => setEndereco(en => ({ ...en, cidade: e.target.value }))}
+                    placeholder="Cidade" className="input text-sm col-span-2" />
+                  <input value={endereco.uf} onChange={e => setEndereco(en => ({ ...en, uf: e.target.value.toUpperCase().slice(0,2) }))}
+                    placeholder="UF" className="input text-sm" />
+                </div>
+              </div>
+            )}
 
             <div>
               <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Serviço</p>

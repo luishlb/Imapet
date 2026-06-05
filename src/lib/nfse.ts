@@ -191,7 +191,6 @@ export function montarDpsXml(dados: DadosDPS, params: {
         toma: {
           ...tomadorDoc,
           xNome: t.nome,
-          ...(t.email ? { email: t.email } : {}),
           ...(t.endereco ? {
             end: {
               endNac: {
@@ -199,11 +198,12 @@ export function montarDpsXml(dados: DadosDPS, params: {
                 CEP: soDigitos(t.endereco.cep),
               },
               xLgr: t.endereco.logradouro,
-              nro: t.endereco.numero,
+              nro: t.endereco.numero || "S/N",
               ...(t.endereco.complemento ? { xCpl: t.endereco.complemento } : {}),
               xBairro: t.endereco.bairro,
             },
           } : {}),
+          ...(t.email ? { email: t.email } : {}),
         },
         serv: {
           locPrest: { cLocPrestacao: codMun },
