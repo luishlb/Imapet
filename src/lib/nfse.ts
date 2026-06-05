@@ -205,7 +205,13 @@ export function montarDpsXml(dados: DadosDPS, params: {
               tpRetISSQN: 1, // 1=Não retido
             },
             totTrib: {
-              vTotTrib: vISS.toFixed(2),
+              vTotTrib: {
+                vTotTribFed: "0.00",
+                vTotTribEst: "0.00",
+                vTotTribMun: vISS.toFixed(2),
+              },
+              pTotTribFed: "0.00",
+              pTotTribEst: "0.00",
               pTotTribMun: (aliq * 100).toFixed(2),
             },
           },
