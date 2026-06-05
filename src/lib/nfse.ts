@@ -171,7 +171,9 @@ export function montarDpsXml(dados: DadosDPS, params: {
           CNPJ: cnpjEmit,
           IM: imEmit,
           regTrib: {
-            opSimpNac: tribOpSimples, // 1=Simples Nacional, 3=Regime normal
+            opSimpNac: tribOpSimples, // 1=Não optante, 2=Optante
+            // Quando optante (2), precisa do regime de apuração SN
+            ...(tribOpSimples === 2 ? { regApTribSN: 1 } : {}),
             regEspTrib: 0,
           },
         },
