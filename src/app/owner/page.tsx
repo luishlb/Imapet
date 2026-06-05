@@ -16,6 +16,7 @@ const MODULES = [
   { href: "/owner/recibo",       icon: "🧾", title: "Gerador de recibo",         desc: "Emitir recibo avulso" },
   { href: "/owner/recibos",      icon: "📑", title: "Histórico de recibos",      desc: "Buscar e reimprimir recibos antigos" },
   { href: "/owner/notas",        icon: "🏛️", title: "Notas fiscais",             desc: "Emitir e consultar NFS-e" },
+  { href: "/owner/arquivos",     icon: "📂", title: "Arquivos oficiais",         desc: "CNPJ, contratos, certidões, alvarás" },
   { href: "/owner/historico",    icon: "🕓", title: "Histórico de alterações",   desc: "Edições, exclusões e pagamentos" },
 ];
 
