@@ -49,9 +49,12 @@ export async function POST(req: NextRequest) {
       emitida_em: resultado.ok ? new Date().toISOString() : null,
     };
 
-    const { error: insertErr } = await sb.from("notas_fiscais").insert(linha);
+    console.log("[NFSE] Resultado emissão:", JSON.stringify({ ok: resultado.ok, numero: resultado.ok ? resultado.numeroNfse : null, erro: resultado.ok ? null : resultado.erro }).slice(0, 500));
+    console.log("[NFSE] Tentando insert:", JSON.stringify({ ...linha, dps_xml: linha.dps_xml ? `${linha.dps_xml.length} chars` : null, nfse_xml: linha.nfse_xml ? `${linha.nfse_xml.length} chars` : null }).slice(0, 800));
+
+    const { error: insertErr, data: insertData } = await sb.from("notas_fiscais").insert(linha).select("id").single();
     if (insertErr) {
-      console.error("Erro ao persistir nota:", insertErr);
+      console.error("[NFSE] ERRO no insert:", JSON.stringify(insertErr));
       // Não falha o request — a nota foi emitida no gov.br. Retorna sucesso com aviso.
       return NextResponse.json({
         ...resultado,
@@ -59,6 +62,7 @@ export async function POST(req: NextRequest) {
       }, { status: resultado.ok ? 200 : 400 });
     }
 
+    console.log("[NFSE] Insert OK, id:", insertData?.id);
     return NextResponse.json(resultado, { status: resultado.ok ? 200 : 400 });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "erro desconhecido";
