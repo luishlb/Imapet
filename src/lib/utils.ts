@@ -43,6 +43,30 @@ export function tipoDocumento(v: string): "CPF" | "CNPJ" | "" {
   return d.length <= 11 ? "CPF" : "CNPJ";
 }
 
+// Converte string em formato brasileiro pra number.
+// Aceita: "1.280", "1.280,00", "1280", "1280,00", "1280.00", "1,5"
+// Regra: se tem vírgula → BR (pontos são milhar, vírgula é decimal)
+//        senão e tem 1 ponto com exatamente 3 dígitos depois → BR milhar
+//        senão → decimal padrão
+export function parseValorBr(s: string): number {
+  if (!s) return NaN;
+  const trim = s.trim();
+  if (trim.includes(",")) {
+    return parseFloat(trim.replace(/\./g, "").replace(",", "."));
+  }
+  const pontos = (trim.match(/\./g) || []).length;
+  if (pontos === 1) {
+    const [a, b] = trim.split(".");
+    if (b.length === 3 && /^\d+$/.test(a) && /^\d+$/.test(b)) {
+      return parseFloat(a + b);
+    }
+  }
+  if (pontos >= 2) {
+    return parseFloat(trim.replace(/\./g, ""));
+  }
+  return parseFloat(trim);
+}
+
 export function valorExtenso(valor: number): string {
   if (isNaN(valor) || valor <= 0) return "zero reais";
   const reais = Math.floor(valor);

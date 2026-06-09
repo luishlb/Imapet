@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { moeda, formatarDocumento, tipoDocumento } from "@/lib/utils";
+import { moeda, formatarDocumento, tipoDocumento, parseValorBr } from "@/lib/utils";
 
 type ExameVinculado = {
   id: string;
@@ -135,7 +135,7 @@ export default function EmitirNotaModal({ exameId, onClose, onEmitida }: Props) 
     setEmitindo(true);
     setResultado(null);
 
-    const valorNum = parseFloat(valor.replace(",", "."));
+    const valorNum = parseValorBr(valor);
     if (isNaN(valorNum) || valorNum <= 0) {
       setResultado({ ok: false, mensagem: "Valor inválido" });
       setEmitindo(false);
@@ -297,16 +297,15 @@ export default function EmitirNotaModal({ exameId, onClose, onEmitida }: Props) 
             <div>
               <label className="block text-xs font-medium text-text-muted mb-1.5">Valor (R$) *</label>
               <input
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
+                inputMode="decimal"
                 value={valor}
                 onChange={(e) => setValor(e.target.value)}
-                placeholder="0,00"
+                placeholder="Ex: 1.280,00"
                 className="input text-sm"
               />
-              {valor && !isNaN(parseFloat(valor)) && (
-                <p className="text-xs text-text-muted mt-1">{moeda(parseFloat(valor))}</p>
+              {valor && !isNaN(parseValorBr(valor)) && (
+                <p className="text-xs text-text-muted mt-1">{moeda(parseValorBr(valor))}</p>
               )}
             </div>
 
