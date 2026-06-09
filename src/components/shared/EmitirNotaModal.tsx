@@ -73,6 +73,7 @@ export default function EmitirNotaModal({ exameId, onClose, onEmitida }: Props) 
   const [valor, setValor] = useState("");
   const [tomadoresSalvos, setTomadoresSalvos] = useState<TomadorSalvo[]>([]);
   const [tomadorIdSelecionado, setTomadorIdSelecionado] = useState<string>("");
+  const [compartilhando, setCompartilhando] = useState(false);
 
   // Carrega tomadores salvos ao abrir o modal
   useEffect(() => {
@@ -186,6 +187,44 @@ export default function EmitirNotaModal({ exameId, onClose, onEmitida }: Props) 
     })();
   }, [exameId]);
 
+  async function baixarPdf() {
+    if (!resultado?.chave) return;
+    window.open(`/api/nfse/danfse/${resultado.chave}`, "_blank");
+  }
+
+  async function compartilhar() {
+    if (!resultado?.chave) return;
+    setCompartilhando(true);
+    try {
+      const res = await fetch(`/api/nfse/danfse/${resultado.chave}?upload=1`);
+      const data = await res.json();
+      if (!data.ok || !data.url) {
+        alert("Falha ao gerar link de compartilhamento: " + (data.erro || "erro"));
+        setCompartilhando(false);
+        return;
+      }
+      const valorNum = parseValorBr(valor);
+      const texto =
+        `Nota Fiscal de Serviço — IMAPET\n\n` +
+        `Valor: ${moeda(valorNum)}\n` +
+        `Serviço: ${descricao.trim()}\n\n` +
+        `📄 Acessar nota oficial:\n${data.url}\n\n` +
+        `Chave de acesso: ${resultado.chave}`;
+
+      if (typeof navigator !== "undefined" && navigator.share) {
+        try {
+          await navigator.share({ title: "NFS-e IMAPET", text: texto, url: data.url });
+          setCompartilhando(false);
+          return;
+        } catch { /* cancelado */ }
+      }
+      window.open(`https://web.whatsapp.com/send?text=${encodeURIComponent(texto)}`, "_blank");
+    } catch (e) {
+      alert("Erro: " + (e instanceof Error ? e.message : "desconhecido"));
+    }
+    setCompartilhando(false);
+  }
+
   async function emitir() {
     if (!tomador.nome.trim() || !descricao.trim() || !valor) return;
     setEmitindo(true);
@@ -268,6 +307,59 @@ export default function EmitirNotaModal({ exameId, onClose, onEmitida }: Props) 
 
         {carregando ? (
           <p className="text-sm text-text-muted py-12 text-center">Carregando dados do exame...</p>
+        ) : resultado?.ok ? (
+          <div className="px-6 py-8 space-y-5 text-center">
+            <div className="mx-auto w-16 h-16 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-3xl">
+              ✓
+            </div>
+            <div>
+              <h3 className="font-playfair text-xl font-bold text-text-main">Nota emitida com sucesso!</h3>
+              <p className="text-xs text-text-muted mt-1">A NFS-e foi autorizada pelo gov.br.</p>
+            </div>
+
+            <div className="bg-gray-50 rounded-xl p-4 text-left space-y-2">
+              <div>
+                <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Tomador</p>
+                <p className="text-sm text-text-main">{tomador.nome}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Valor</p>
+                <p className="text-sm font-bold text-primary">{moeda(parseValorBr(valor))}</p>
+              </div>
+              {resultado.chave && (
+                <div>
+                  <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Chave de acesso</p>
+                  <p className="text-[10px] font-mono break-all text-text-muted">{resultado.chave}</p>
+                </div>
+              )}
+              {(resultado.mensagem.includes("avisoBanco") || resultado.mensagem.includes("⚠️")) && (
+                <p className="text-[11px] text-amber-700 bg-amber-50 rounded p-2 mt-2">{resultado.mensagem.split("\n").find(l => l.includes("⚠️"))}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <button
+                onClick={baixarPdf}
+                disabled={!resultado.chave}
+                className="w-full bg-primary text-white text-sm font-semibold py-3 rounded-xl hover:bg-primary-light transition disabled:opacity-50"
+              >
+                📄 Baixar PDF
+              </button>
+              <button
+                onClick={compartilhar}
+                disabled={!resultado.chave || compartilhando}
+                className="w-full bg-green-600 text-white text-sm font-semibold py-3 rounded-xl hover:bg-green-700 transition disabled:opacity-50"
+              >
+                {compartilhando ? "Gerando link..." : "📤 Compartilhar"}
+              </button>
+              <button
+                onClick={onClose}
+                className="w-full bg-gray-100 text-text-main text-sm font-semibold py-3 rounded-xl hover:bg-gray-200 transition"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
         ) : (
           <div className="px-6 py-5 space-y-4">
             {exame && (
@@ -381,39 +473,28 @@ export default function EmitirNotaModal({ exameId, onClose, onEmitida }: Props) 
               )}
             </div>
 
-            {resultado && (
-              <div
-                className={`rounded-xl px-4 py-3 text-[11px] whitespace-pre-wrap break-words max-h-[26rem] overflow-y-auto font-mono ${
-                  resultado.ok ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-800"
-                }`}
-              >
+            {resultado && !resultado.ok && (
+              <div className="rounded-xl px-4 py-3 text-[11px] whitespace-pre-wrap break-words max-h-[26rem] overflow-y-auto font-mono bg-amber-50 text-amber-800">
                 {resultado.mensagem}
               </div>
-            )}
-
-            {resultado?.ok && resultado.notaId && (
-              <a
-                href={`/owner/notas/${resultado.notaId}`}
-                className="block w-full bg-primary text-white text-sm font-semibold py-3 rounded-xl hover:bg-primary-light transition text-center"
-              >
-                📄 Abrir DANFSe (baixar / compartilhar)
-              </a>
             )}
           </div>
         )}
 
-        <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-2 sticky bottom-0 bg-white">
-          <button onClick={onClose} disabled={emitindo} className="text-sm text-text-muted hover:text-text-main px-4 py-2">
-            Cancelar
-          </button>
-          <button
-            onClick={emitir}
-            disabled={emitindo || !tomador.nome.trim() || !descricao.trim() || !valor}
-            className="bg-primary text-white text-sm font-semibold px-5 py-2 rounded-xl hover:bg-primary-light transition disabled:opacity-50"
-          >
-            {emitindo ? "Emitindo..." : "🧾 Emitir NFS-e"}
-          </button>
-        </div>
+        {!resultado?.ok && !carregando && (
+          <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-2 sticky bottom-0 bg-white">
+            <button onClick={onClose} disabled={emitindo} className="text-sm text-text-muted hover:text-text-main px-4 py-2">
+              Cancelar
+            </button>
+            <button
+              onClick={emitir}
+              disabled={emitindo || !tomador.nome.trim() || !descricao.trim() || !valor}
+              className="bg-primary text-white text-sm font-semibold px-5 py-2 rounded-xl hover:bg-primary-light transition disabled:opacity-50"
+            >
+              {emitindo ? "Emitindo..." : "🧾 Emitir NFS-e"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
