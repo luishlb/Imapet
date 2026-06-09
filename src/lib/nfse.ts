@@ -273,7 +273,7 @@ export function assinarXml(xml: string): string {
 
 // ─── Envio ao Portal Nacional ────────────────────────────────────────────────
 
-async function postMtls(url: string, body: Buffer, headers: Record<string, string>): Promise<{ status: number; body: string; headers: Record<string, string | string[] | undefined> }> {
+function postMtlsUma(url: string, body: Buffer, headers: Record<string, string>, timeoutMs: number): Promise<{ status: number; body: string; headers: Record<string, string | string[] | undefined> }> {
   const { pemCert, pemKey } = carregarCertificado();
 
   return new Promise((resolve, reject) => {
@@ -287,6 +287,7 @@ async function postMtls(url: string, body: Buffer, headers: Record<string, strin
       cert: pemCert,
       key: pemKey,
       rejectUnauthorized: true,
+      timeout: timeoutMs,
     }, (res) => {
       const chunks: Buffer[] = [];
       res.on("data", (c) => chunks.push(c));
@@ -300,9 +301,31 @@ async function postMtls(url: string, body: Buffer, headers: Record<string, strin
       });
     });
     req.on("error", reject);
+    req.on("timeout", () => req.destroy(new Error("Timeout")));
     req.write(body);
     req.end();
   });
+}
+
+async function postMtls(url: string, body: Buffer, headers: Record<string, string>): Promise<{ status: number; body: string; headers: Record<string, string | string[] | undefined> }> {
+  // Retry com backoff em erros transitórios (socket hang up, ECONNRESET, ETIMEDOUT)
+  const tentativas = 3;
+  const delays = [0, 2000, 5000];
+  let ultimoErro: Error | null = null;
+
+  for (let i = 0; i < tentativas; i++) {
+    if (delays[i] > 0) await new Promise(r => setTimeout(r, delays[i]));
+    try {
+      return await postMtlsUma(url, body, headers, 25000);
+    } catch (e) {
+      ultimoErro = e instanceof Error ? e : new Error("Erro desconhecido");
+      const msg = ultimoErro.message.toLowerCase();
+      // Só faz retry em erros de transporte. Erros de HTTP (4xx, 5xx) vêm como response normal, não exception.
+      const transitorio = msg.includes("socket hang up") || msg.includes("econnreset") || msg.includes("etimedout") || msg.includes("timeout") || msg.includes("epipe");
+      if (!transitorio) throw ultimoErro;
+    }
+  }
+  throw ultimoErro || new Error("Falha após múltiplas tentativas");
 }
 
 export async function diagnosticarConexao(): Promise<{ ok: boolean; mensagem: string; detalhes: unknown }> {
