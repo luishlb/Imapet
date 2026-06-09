@@ -146,6 +146,9 @@ export function montarDpsXml(dados: DadosDPS, params: {
   const codTribMun = dados.codigoServicoMunicipal || process.env.NFSE_CODIGO_SERVICO || "501";
 
   const idDps = gerarIdDps(codMun, 2, cnpjEmit, params.serie, params.numero);
+  // No elemento <nDPS> o XSD TSNumDPS rejeita leading zero — mas o idDps acima
+  // PRECISA dos zeros pra completar 15 chars. Tirar leading zero só pro elemento.
+  const nDPSElemento = params.numero.replace(/^0+/, "") || "1";
   // dhEmi em horário de Brasília (-03:00) — ajustamos os ms pra que o ISO output já bata
   const agoraBrasilia = new Date(Date.now() - 3 * 60 * 60 * 1000);
   const dhEmi = agoraBrasilia.toISOString().replace(/\.\d{3}Z$/, "-03:00");
@@ -174,7 +177,7 @@ export function montarDpsXml(dados: DadosDPS, params: {
         dhEmi,
         verAplic: "IMAPET-1.0",
         serie: params.serie,
-        nDPS: params.numero,
+        nDPS: nDPSElemento,
         dCompet,
         tpEmit: 1, // 1=Prestador emitindo a própria nota
         cLocEmi: codMun,
