@@ -309,23 +309,29 @@ function postMtlsUma(url: string, body: Buffer, headers: Record<string, string>,
 
 async function postMtls(url: string, body: Buffer, headers: Record<string, string>): Promise<{ status: number; body: string; headers: Record<string, string | string[] | undefined> }> {
   // Retry com backoff em erros transitórios (socket hang up, ECONNRESET, ETIMEDOUT)
-  const tentativas = 3;
-  const delays = [0, 2000, 5000];
-  let ultimoErro: Error | null = null;
+  const delays = [0, 2000, 4000, 7000, 12000];
+  const errosPorTentativa: string[] = [];
 
-  for (let i = 0; i < tentativas; i++) {
+  for (let i = 0; i < delays.length; i++) {
     if (delays[i] > 0) await new Promise(r => setTimeout(r, delays[i]));
     try {
-      return await postMtlsUma(url, body, headers, 25000);
+      console.log(`[NFSE] Tentativa ${i + 1}/${delays.length} POST ${url}`);
+      const res = await postMtlsUma(url, body, headers, 45000);
+      console.log(`[NFSE] Tentativa ${i + 1} resposta status ${res.status}`);
+      return res;
     } catch (e) {
-      ultimoErro = e instanceof Error ? e : new Error("Erro desconhecido");
-      const msg = ultimoErro.message.toLowerCase();
-      // Só faz retry em erros de transporte. Erros de HTTP (4xx, 5xx) vêm como response normal, não exception.
-      const transitorio = msg.includes("socket hang up") || msg.includes("econnreset") || msg.includes("etimedout") || msg.includes("timeout") || msg.includes("epipe");
-      if (!transitorio) throw ultimoErro;
+      const msg = e instanceof Error ? e.message : "Erro desconhecido";
+      errosPorTentativa.push(`#${i + 1}: ${msg}`);
+      console.log(`[NFSE] Tentativa ${i + 1} falhou: ${msg}`);
+      const lower = msg.toLowerCase();
+      // Só faz retry em erros de transporte. Erros HTTP normais (4xx, 5xx) chegam como response, não exception.
+      const transitorio = lower.includes("socket hang up") || lower.includes("econnreset") || lower.includes("etimedout") || lower.includes("timeout") || lower.includes("epipe");
+      if (!transitorio) {
+        throw new Error(`Erro permanente: ${msg}`);
+      }
     }
   }
-  throw ultimoErro || new Error("Falha após múltiplas tentativas");
+  throw new Error(`Servidor do gov.br cortou a conexão em todas as ${delays.length} tentativas. Erros: ${errosPorTentativa.join(" | ")}`);
 }
 
 export async function diagnosticarConexao(): Promise<{ ok: boolean; mensagem: string; detalhes: unknown }> {
@@ -358,17 +364,18 @@ export async function diagnosticarConexao(): Promise<{ ok: boolean; mensagem: st
 
 // ─── Funções públicas ────────────────────────────────────────────────────────
 
-export async function emitirNfse(dados: DadosDPS, opts?: { serie?: string; numero?: string }): Promise<RespostaEmissao> {
+export async function emitirNfse(dados: DadosDPS, opts?: { serie?: string; numero?: string }): Promise<RespostaEmissao & { xmlDpsTentado?: string }> {
   if (!nfseConfigurada()) {
     return { ok: false, erro: "NFS-e não configurada (faltam env vars)." };
   }
 
-  try {
-    const serie = opts?.serie || "00001";
-    const numero = opts?.numero || String(Date.now()).slice(-9);
+  const serie = opts?.serie || "00001";
+  const numero = opts?.numero || String(Date.now()).slice(-9);
+  let xmlAssinado: string | null = null;
 
+  try {
     const xmlDps = montarDpsXml(dados, { serie, numero });
-    const xmlAssinado = assinarXml(xmlDps);
+    xmlAssinado = assinarXml(xmlDps);
 
     // Sefin Nacional aceita JSON com o XML assinado em gzip+base64
     // Campo: dpsXmlGZipB64
@@ -483,7 +490,12 @@ export async function emitirNfse(dados: DadosDPS, opts?: { serie?: string; numer
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Erro desconhecido";
-    return { ok: false, erro: msg };
+    return {
+      ok: false,
+      erro: msg,
+      detalhes: { stack: e instanceof Error ? e.stack : null, serie, numero },
+      xmlDpsTentado: xmlAssinado || undefined,
+    };
   }
 }
 

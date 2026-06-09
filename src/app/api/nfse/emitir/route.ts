@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
       valor_servico: dados.valorServico,
       aliquota_iss: aliq,
       valor_iss: Math.round(dados.valorServico * aliq * 100) / 100,
-      dps_xml: resultado.ok ? resultado.xmlDps : null,
+      dps_xml: resultado.ok ? resultado.xmlDps : (resultado as { xmlDpsTentado?: string }).xmlDpsTentado || null,
       nfse_xml: resultado.ok ? resultado.xmlNfse : null,
       emitida_em: resultado.ok ? new Date().toISOString() : null,
     };
