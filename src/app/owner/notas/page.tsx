@@ -129,62 +129,108 @@ export default function NotasPage() {
                 </button>
               </div>
             ) : (
-              <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="text-[10px] text-text-muted uppercase tracking-wider bg-gray-50 border-b border-gray-100">
-                        <th className="text-left px-3 py-3 whitespace-nowrap">Data</th>
-                        <th className="text-left px-3 py-3">Nº NFS-e</th>
-                        <th className="text-left px-3 py-3">Tomador</th>
-                        <th className="text-left px-3 py-3">Descrição</th>
-                        <th className="text-right px-3 py-3">Valor</th>
-                        <th className="text-left px-3 py-3">Status</th>
-                        <th className="px-3 py-3"></th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {notas.map((n) => {
-                        const status = STATUS_LABELS[n.status] || STATUS_LABELS.rascunho;
-                        return (
-                          <tr key={n.id} className="hover:bg-gray-50">
-                            <td className="px-3 py-2 text-text-muted whitespace-nowrap">
-                              {n.emitida_em ? dataFmt(n.emitida_em.slice(0, 10)) : dataFmt(n.criado_em.slice(0, 10))}
-                            </td>
-                            <td className="px-3 py-2 font-mono text-text-main">{n.numero_nfse || "—"}</td>
-                            <td className="px-3 py-2 text-text-main">{n.tomador_nome}</td>
-                            <td className="px-3 py-2 text-text-muted max-w-[240px] truncate">{n.descricao}</td>
-                            <td className="px-3 py-2 text-right font-semibold text-text-main">{moeda(n.valor_servico)}</td>
-                            <td className="px-3 py-2">
-                              <span className={`text-[10px] font-semibold px-2 py-1 rounded-md ${status.cor}`}>
-                                {status.texto}
-                              </span>
-                              {n.ambiente === "homologacao" && (
-                                <span className="text-[10px] text-amber-600 ml-1">homol</span>
-                              )}
-                            </td>
-                            <td className="px-3 py-2 text-right whitespace-nowrap">
-                              <Link
-                                href={`/owner/notas/${n.id}`}
-                                className="inline-flex items-center px-2 py-1 rounded-lg bg-primary/10 text-primary text-[11px] font-medium hover:bg-primary/20"
-                                title="Ver DANFSe"
-                              >
-                                📄 Abrir
-                              </Link>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              <>
+                <TabelaNotas
+                  titulo="Notas autorizadas"
+                  cor="text-green-700"
+                  notas={notas.filter((n) => n.status === "autorizada")}
+                  vazio="Nenhuma nota autorizada ainda."
+                />
+                <TabelaNotas
+                  titulo="Notas rejeitadas"
+                  cor="text-red-600"
+                  notas={notas.filter((n) => n.status !== "autorizada")}
+                  vazio="Nenhuma nota rejeitada — tudo certo!"
+                  colapsavel
+                />
+              </>
             )}
           </>
         )}
       </main>
 
       {emitindo && <EmitirNotaModal onClose={() => setEmitindo(false)} onEmitida={carregar} />}
+    </div>
+  );
+}
+
+function TabelaNotas({ titulo, cor, notas, vazio, colapsavel = false }: {
+  titulo: string;
+  cor: string;
+  notas: NotaFiscal[];
+  vazio: string;
+  colapsavel?: boolean;
+}) {
+  const [aberto, setAberto] = useState(!colapsavel);
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+      <button
+        onClick={() => colapsavel && setAberto(!aberto)}
+        disabled={!colapsavel}
+        className={`w-full flex items-center justify-between px-5 py-3 border-b border-gray-100 ${colapsavel ? "hover:bg-gray-50 cursor-pointer" : "cursor-default"}`}
+      >
+        <span className={`text-sm font-semibold ${cor}`}>
+          {titulo} <span className="text-text-muted font-normal">({notas.length})</span>
+        </span>
+        {colapsavel && (
+          <span className="text-xs text-text-muted">{aberto ? "▲ Esconder" : "▼ Mostrar"}</span>
+        )}
+      </button>
+      {aberto && (
+        notas.length === 0 ? (
+          <p className="text-xs text-text-muted text-center py-6">{vazio}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-[10px] text-text-muted uppercase tracking-wider bg-gray-50 border-b border-gray-100">
+                  <th className="text-left px-3 py-3 whitespace-nowrap">Data</th>
+                  <th className="text-left px-3 py-3">Nº NFS-e</th>
+                  <th className="text-left px-3 py-3">Tomador</th>
+                  <th className="text-left px-3 py-3">Descrição</th>
+                  <th className="text-right px-3 py-3">Valor</th>
+                  <th className="text-left px-3 py-3">Status</th>
+                  <th className="px-3 py-3"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {notas.map((n) => {
+                  const status = STATUS_LABELS[n.status] || STATUS_LABELS.rascunho;
+                  return (
+                    <tr key={n.id} className="hover:bg-gray-50">
+                      <td className="px-3 py-2 text-text-muted whitespace-nowrap">
+                        {n.emitida_em ? dataFmt(n.emitida_em.slice(0, 10)) : dataFmt(n.criado_em.slice(0, 10))}
+                      </td>
+                      <td className="px-3 py-2 font-mono text-text-main">{n.numero_nfse || "—"}</td>
+                      <td className="px-3 py-2 text-text-main">{n.tomador_nome}</td>
+                      <td className="px-3 py-2 text-text-muted max-w-[240px] truncate">{n.descricao}</td>
+                      <td className="px-3 py-2 text-right font-semibold text-text-main">{moeda(n.valor_servico)}</td>
+                      <td className="px-3 py-2">
+                        <span className={`text-[10px] font-semibold px-2 py-1 rounded-md ${status.cor}`}>
+                          {status.texto}
+                        </span>
+                        {n.ambiente === "homologacao" && (
+                          <span className="text-[10px] text-amber-600 ml-1">homol</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-right whitespace-nowrap">
+                        <Link
+                          href={`/owner/notas/${n.id}`}
+                          className="inline-flex items-center px-2 py-1 rounded-lg bg-primary/10 text-primary text-[11px] font-medium hover:bg-primary/20"
+                          title="Ver detalhe"
+                        >
+                          📄 Abrir
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )
+      )}
     </div>
   );
 }

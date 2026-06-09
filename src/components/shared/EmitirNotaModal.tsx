@@ -43,6 +43,23 @@ const ENDERECO_VAZIO: Endereco = {
   cidade: "", uf: "", cep: "", codigoMunicipio: "",
 };
 
+type TomadorSalvo = {
+  id: string;
+  tipo_doc: "CPF" | "CNPJ";
+  documento: string;
+  nome: string;
+  email: string | null;
+  logradouro: string | null;
+  numero: string | null;
+  complemento: string | null;
+  bairro: string | null;
+  cidade: string | null;
+  uf: string | null;
+  cep: string | null;
+  cod_municipio: string | null;
+  emissoes: number;
+};
+
 export default function EmitirNotaModal({ exameId, onClose, onEmitida }: Props) {
   const [exame, setExame] = useState<ExameVinculado | null>(null);
   const [carregando, setCarregando] = useState(!!exameId);
@@ -54,11 +71,50 @@ export default function EmitirNotaModal({ exameId, onClose, onEmitida }: Props) 
   const [buscandoCnpj, setBuscandoCnpj] = useState(false);
   const [descricao, setDescricao] = useState("");
   const [valor, setValor] = useState("");
+  const [tomadoresSalvos, setTomadoresSalvos] = useState<TomadorSalvo[]>([]);
+  const [tomadorIdSelecionado, setTomadorIdSelecionado] = useState<string>("");
+
+  // Carrega tomadores salvos ao abrir o modal
+  useEffect(() => {
+    fetch("/api/nfse/tomadores")
+      .then(r => r.json())
+      .then(d => setTomadoresSalvos(d.tomadores || []))
+      .catch(() => {});
+  }, []);
+
+  function selecionarTomadorSalvo(id: string) {
+    setTomadorIdSelecionado(id);
+    if (!id) {
+      // "Novo tomador" — limpa campos
+      setTomador({ nome: "", documento: "", email: "" });
+      setEndereco(ENDERECO_VAZIO);
+      return;
+    }
+    const t = tomadoresSalvos.find(x => x.id === id);
+    if (!t) return;
+    setTomador({
+      nome: t.nome,
+      documento: formatarDocumento(t.documento),
+      email: t.email || "",
+    });
+    setEndereco({
+      logradouro: t.logradouro || "",
+      numero: t.numero || "",
+      complemento: t.complemento || "",
+      bairro: t.bairro || "",
+      cidade: t.cidade || "",
+      uf: t.uf || "",
+      cep: t.cep || "",
+      codigoMunicipio: t.cod_municipio || "",
+    });
+  }
 
   // Auto-busca endereço quando CNPJ válido for digitado
   useEffect(() => {
     const docDigitos = tomador.documento.replace(/\D/g, "");
     if (tipoDocumento(tomador.documento) !== "CNPJ" || docDigitos.length !== 14) return;
+    // Se o documento veio de um tomador salvo, já temos os dados — não bater na API
+    if (tomadorIdSelecionado && tomadoresSalvos.find(t => t.id === tomadorIdSelecionado)?.documento === docDigitos) return;
     let cancelado = false;
     setBuscandoCnpj(true);
     fetch(`https://brasilapi.com.br/api/cnpj/v1/${docDigitos}`)
@@ -226,6 +282,22 @@ export default function EmitirNotaModal({ exameId, onClose, onEmitida }: Props) 
             <div>
               <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Tomador</p>
               <div className="space-y-2">
+                {tomadoresSalvos.length > 0 && (
+                  <select
+                    value={tomadorIdSelecionado}
+                    onChange={(e) => selecionarTomadorSalvo(e.target.value)}
+                    className="input text-sm bg-primary/5"
+                  >
+                    <option value="">+ Novo tomador (preencher abaixo)</option>
+                    <optgroup label="Tomadores cadastrados">
+                      {tomadoresSalvos.map(t => (
+                        <option key={t.id} value={t.id}>
+                          {t.nome} · {formatarDocumento(t.documento)}
+                        </option>
+                      ))}
+                    </optgroup>
+                  </select>
+                )}
                 <input
                   value={tomador.nome}
                   onChange={(e) => setTomador((t) => ({ ...t, nome: e.target.value }))}

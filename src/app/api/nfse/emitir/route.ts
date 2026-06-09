@@ -63,6 +63,43 @@ export async function POST(req: NextRequest) {
     }
 
     console.log("[NFSE] Insert OK, id:", insertData?.id);
+
+    // Cadastra/atualiza tomador pra autocompletar nas próximas emissões
+    if (resultado.ok && tomadorDoc) {
+      try {
+        const tom = dados.tomador;
+        const endereco = (tom as { endereco?: { logradouro?: string; numero?: string; complemento?: string; bairro?: string; cidade?: string; uf?: string; cep?: string; codigoMunicipio?: string } }).endereco;
+        const docDigitos = tomadorDoc.replace(/\D/g, "");
+        const tomadorRow = {
+          tipo_doc: tomadorTipo,
+          documento: docDigitos,
+          nome: tom.nome,
+          email: tom.email || null,
+          logradouro: endereco?.logradouro || null,
+          numero: endereco?.numero || null,
+          complemento: endereco?.complemento || null,
+          bairro: endereco?.bairro || null,
+          cidade: endereco?.cidade || null,
+          uf: endereco?.uf || null,
+          cep: endereco?.cep || null,
+          cod_municipio: endereco?.codigoMunicipio || null,
+          ultima_emissao_em: new Date().toISOString(),
+        };
+        // Upsert por documento — se já existe, atualiza últimos dados + incrementa contador
+        const { data: existente } = await sb.from("tomadores_nf").select("emissoes").eq("documento", docDigitos).maybeSingle();
+        if (existente) {
+          await sb.from("tomadores_nf").update({
+            ...tomadorRow,
+            emissoes: (existente.emissoes || 0) + 1,
+          }).eq("documento", docDigitos);
+        } else {
+          await sb.from("tomadores_nf").insert(tomadorRow);
+        }
+      } catch (e) {
+        console.error("[NFSE] Falha ao salvar tomador (não-crítico):", e);
+      }
+    }
+
     return NextResponse.json({ ...resultado, notaId: insertData?.id }, { status: resultado.ok ? 200 : 400 });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "erro desconhecido";

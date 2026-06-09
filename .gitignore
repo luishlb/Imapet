@@ -36,7 +36,19 @@ Thumbs.db
 
 # Local credentials and notes (never commit)
 credenciais-*.md
+credenciais-*.local.txt
+credenciais-*.txt
 *.secret.md
+*.pfx
+*.p12
+
+# Local-only scratch dirs
+.tmp.driveupload/
+.claude/
+referencias/
+contexto.md
+importacao_historico.sql
+normalizar_tipos.sql
 
 # TypeScript
 *.tsbuildinfo
