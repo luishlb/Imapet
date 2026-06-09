@@ -567,38 +567,33 @@ async function tentarBaixarDanfse(url: string): Promise<{ status: number; pdf: B
 export async function baixarDanfse(chaveAcesso: string): Promise<{ ok: true; pdf: Buffer } | { ok: false; erro: string; status?: number; body?: string }> {
   if (!nfseConfigurada()) return { ok: false, erro: "NFS-e não configurada." };
 
-  // Lista de paths possíveis pra tentar — gov.br produção vs homologação tem variações
+  // O path que sabemos que funciona em produção é só /danfse/{chave} — sem variações
   const base = endpointAdn();
-  const paths = [
-    `${base}/danfse/${chaveAcesso}`,
-    `${base}/contribuintes/danfse/${chaveAcesso}`,
-    `${base}/Danfse/${chaveAcesso}`,
-  ];
+  const url = `${base}/danfse/${chaveAcesso}`;
 
   let ultimoErro: { status: number; body: string } = { status: 0, body: "" };
 
-  // 1 tentativa imediata + 1 retry após 2s (DANFSe leva alguns segundos pra ser gerado em produção)
+  // 1 tentativa imediata + 1 retry após 3s. NÃO loopa em paths — economiza requests
+  // pra evitar rate limit (429). Se vier 429, retorna IMEDIATAMENTE — esperar mais
+  // do mesmo cliente só piora.
   for (let tentativa = 0; tentativa < 2; tentativa++) {
-    if (tentativa > 0) {
-      await new Promise((r) => setTimeout(r, 2000));
-    }
-    for (const url of paths) {
-      try {
-        const r = await tentarBaixarDanfse(url);
-        // Sucesso: status 2xx + Content-Type PDF
-        if (r.status >= 200 && r.status < 300 && r.contentType.includes("pdf")) {
-          return { ok: true, pdf: r.pdf };
-        }
-        ultimoErro = { status: r.status, body: r.pdf.toString("utf8").slice(0, 300) };
-      } catch (e) {
-        ultimoErro = { status: 0, body: e instanceof Error ? e.message : "erro" };
+    if (tentativa > 0) await new Promise((r) => setTimeout(r, 3000));
+    try {
+      const r = await tentarBaixarDanfse(url);
+      if (r.status >= 200 && r.status < 300 && r.contentType.includes("pdf")) {
+        return { ok: true, pdf: r.pdf };
       }
+      ultimoErro = { status: r.status, body: r.pdf.toString("utf8").slice(0, 300) };
+      // 429 = rate limit. Não adianta tentar de novo agora, vai só piorar.
+      if (r.status === 429) break;
+    } catch (e) {
+      ultimoErro = { status: 0, body: e instanceof Error ? e.message : "erro" };
     }
   }
 
   return {
     ok: false,
-    erro: `Não foi possível baixar o DANFSe (status ${ultimoErro.status}). O PDF pode estar sendo gerado — tente novamente em alguns minutos.`,
+    erro: `Não foi possível baixar o DANFSe (status ${ultimoErro.status}).`,
     status: ultimoErro.status,
     body: ultimoErro.body,
   };
