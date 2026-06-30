@@ -11,7 +11,7 @@ export async function GET() {
 
   const { data, error } = await sb
     .from("tomadores_nf")
-    .select("id, tipo_doc, documento, nome, email, logradouro, numero, complemento, bairro, cidade, uf, cep, cod_municipio, ultima_emissao_em, emissoes")
+    .select("id, tipo_doc, documento, nome, email, logradouro, numero, complemento, bairro, cidade, uf, cep, cod_municipio, iss_retido, ultima_emissao_em, emissoes")
     .order("ultima_emissao_em", { ascending: false })
     .limit(200);
 

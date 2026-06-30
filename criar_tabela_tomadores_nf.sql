@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS tomadores_nf (
   uf            TEXT,
   cep           TEXT,
   cod_municipio TEXT,
+  iss_retido    BOOLEAN NOT NULL DEFAULT FALSE,
   ultima_emissao_em TIMESTAMPTZ DEFAULT NOW(),
   emissoes      INTEGER NOT NULL DEFAULT 1,
   criado_em     TIMESTAMPTZ NOT NULL DEFAULT NOW(),

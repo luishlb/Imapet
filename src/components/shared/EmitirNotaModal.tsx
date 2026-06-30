@@ -57,6 +57,7 @@ type TomadorSalvo = {
   uf: string | null;
   cep: string | null;
   cod_municipio: string | null;
+  iss_retido: boolean | null;
   emissoes: number;
 };
 
@@ -71,6 +72,7 @@ export default function EmitirNotaModal({ exameId, onClose, onEmitida }: Props) 
   const [buscandoCnpj, setBuscandoCnpj] = useState(false);
   const [descricao, setDescricao] = useState("");
   const [valor, setValor] = useState("");
+  const [issRetido, setIssRetido] = useState(false);
   const [tomadoresSalvos, setTomadoresSalvos] = useState<TomadorSalvo[]>([]);
   const [tomadorIdSelecionado, setTomadorIdSelecionado] = useState<string>("");
   const [compartilhando, setCompartilhando] = useState(false);
@@ -89,10 +91,13 @@ export default function EmitirNotaModal({ exameId, onClose, onEmitida }: Props) 
       // "Novo tomador" — limpa campos
       setTomador({ nome: "", documento: "", email: "" });
       setEndereco(ENDERECO_VAZIO);
+      setIssRetido(false);
       return;
     }
     const t = tomadoresSalvos.find(x => x.id === id);
     if (!t) return;
+    // Herda a preferência de retenção de ISS do cadastro do tomador
+    setIssRetido(!!t.iss_retido);
     setTomador({
       nome: t.nome,
       documento: formatarDocumento(t.documento),
@@ -260,6 +265,7 @@ export default function EmitirNotaModal({ exameId, onClose, onEmitida }: Props) 
       },
       descricao: descricao.trim(),
       valorServico: valorNum,
+      issRetido,
     };
 
     try {
@@ -471,6 +477,23 @@ export default function EmitirNotaModal({ exameId, onClose, onEmitida }: Props) 
               {valor && !isNaN(parseValorBr(valor)) && (
                 <p className="text-xs text-text-muted mt-1">{moeda(parseValorBr(valor))}</p>
               )}
+            </div>
+
+            <div>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={issRetido}
+                  onChange={(e) => setIssRetido(e.target.checked)}
+                  className="w-4 h-4 accent-primary"
+                />
+                <span className="text-sm text-text-main">ISS retido na fonte</span>
+              </label>
+              <p className="text-[11px] text-text-muted mt-1 ml-6">
+                {issRetido
+                  ? "A nota será emitida com o ISSQN retido (tpRetISSQN = 2)."
+                  : "A nota será emitida com o ISSQN não retido (tpRetISSQN = 1)."}
+              </p>
             </div>
 
             {resultado && !resultado.ok && (

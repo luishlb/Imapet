@@ -83,6 +83,7 @@ export async function POST(req: NextRequest) {
           uf: endereco?.uf || null,
           cep: endereco?.cep || null,
           cod_municipio: endereco?.codigoMunicipio || null,
+          iss_retido: !!dados.issRetido,
           ultima_emissao_em: new Date().toISOString(),
         };
         // Upsert por documento — se já existe, atualiza últimos dados + incrementa contador

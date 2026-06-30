@@ -62,6 +62,7 @@ export type DadosDPS = {
   codigoServicoNacional?: string;
   codigoServicoMunicipal?: string;
   aliquotaIss?: number;
+  issRetido?: boolean; // true = ISS retido na fonte (tpRetISSQN=2); false/undefined = não retido (1)
   dataPrestacao?: string; // YYYY-MM-DD
 };
 
@@ -221,7 +222,7 @@ export function montarDpsXml(dados: DadosDPS, params: {
           trib: {
             tribMun: {
               tribISSQN: 1, // 1=Operação tributável
-              tpRetISSQN: 1, // 1=Não retido
+              tpRetISSQN: dados.issRetido ? 2 : 1, // 1=Não retido, 2=Retido na fonte
             },
             totTrib: {
               vTotTrib: {
