@@ -222,6 +222,10 @@ export function montarDpsXml(dados: DadosDPS, params: {
           trib: {
             tribMun: {
               tribISSQN: 1, // 1=Operação tributável
+              // Com ISS retido (tpRetISSQN=2) o gov.br exige a alíquota informada
+              // para prestador ME/EPP do Simples Nacional (erro E0621). Sem retenção,
+              // o SN recolhe via DAS e a alíquota não vai no XML.
+              ...(dados.issRetido ? { pAliq: (aliq * 100).toFixed(2) } : {}),
               tpRetISSQN: dados.issRetido ? 2 : 1, // 1=Não retido, 2=Retido na fonte
             },
             totTrib: {
