@@ -125,6 +125,27 @@ export function carregarCertificado() {
   return certCache;
 }
 
+export type InfoCertificado =
+  | { ok: true; subject: string; validoDe: string; validoAte: string; diasRestantes: number; vencido: boolean }
+  | { ok: false; erro: string };
+
+export function infoCertificado(): InfoCertificado {
+  try {
+    const { cert } = carregarCertificado();
+    const diasRestantes = Math.floor((cert.validity.notAfter.getTime() - Date.now()) / 86400000);
+    return {
+      ok: true,
+      subject: cert.subject.attributes.map((a) => `${a.shortName}=${a.value}`).join(", "),
+      validoDe: cert.validity.notBefore.toISOString(),
+      validoAte: cert.validity.notAfter.toISOString(),
+      diasRestantes,
+      vencido: diasRestantes < 0,
+    };
+  } catch (e) {
+    return { ok: false, erro: e instanceof Error ? e.message : "Erro ao ler o certificado" };
+  }
+}
+
 // ─── Montagem do DPS XML ─────────────────────────────────────────────────────
 
 function gerarIdDps(cMun: string, tpInsc: 1 | 2, doc: string, serie: string, numero: string): string {

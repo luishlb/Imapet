@@ -61,6 +61,13 @@ type TomadorSalvo = {
   emissoes: number;
 };
 
+type StatusNfse = {
+  configurada: boolean;
+  ambiente: "homologacao" | "producao";
+  certificado: { validoAte: string; diasRestantes: number; vencido: boolean } | null;
+  certErro: string | null;
+};
+
 export default function EmitirNotaModal({ exameId, onClose, onEmitida }: Props) {
   const [exame, setExame] = useState<ExameVinculado | null>(null);
   const [carregando, setCarregando] = useState(!!exameId);
@@ -76,12 +83,21 @@ export default function EmitirNotaModal({ exameId, onClose, onEmitida }: Props) 
   const [tomadoresSalvos, setTomadoresSalvos] = useState<TomadorSalvo[]>([]);
   const [tomadorIdSelecionado, setTomadorIdSelecionado] = useState<string>("");
   const [compartilhando, setCompartilhando] = useState(false);
+  const [status, setStatus] = useState<StatusNfse | null>(null);
 
   // Carrega tomadores salvos ao abrir o modal
   useEffect(() => {
     fetch("/api/nfse/tomadores")
       .then(r => r.json())
       .then(d => setTomadoresSalvos(d.tomadores || []))
+      .catch(() => {});
+  }, []);
+
+  // Ambiente real + validade do certificado (vem do servidor pra não dessincronizar)
+  useEffect(() => {
+    fetch("/api/nfse/status")
+      .then(r => r.json())
+      .then((d: StatusNfse) => setStatus(d))
       .catch(() => {});
   }, []);
 
@@ -306,7 +322,18 @@ export default function EmitirNotaModal({ exameId, onClose, onEmitida }: Props) 
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10">
           <div>
             <h2 className="font-playfair text-lg font-bold text-text-main">Emitir NFS-e</h2>
-            <p className="text-xs text-text-muted">Portal Nacional · {process.env.NEXT_PUBLIC_NFSE_AMBIENTE === "producao" ? "Produção" : "Homologação"}</p>
+            <p className="text-xs text-text-muted">
+              Portal Nacional ·{" "}
+              {status ? (
+                status.ambiente === "producao" ? (
+                  <span className="font-semibold text-red-600">Produção · nota com valor fiscal</span>
+                ) : (
+                  <span className="font-semibold text-text-muted">Homologação · nota de teste</span>
+                )
+              ) : (
+                "carregando ambiente..."
+              )}
+            </p>
           </div>
           <button onClick={onClose} className="text-text-muted hover:text-red-500 text-xl leading-none px-2">×</button>
         </div>
@@ -368,6 +395,30 @@ export default function EmitirNotaModal({ exameId, onClose, onEmitida }: Props) 
           </div>
         ) : (
           <div className="px-6 py-5 space-y-4">
+            {status?.certificado && status.certificado.vencido && (
+              <div className="rounded-xl px-4 py-3 bg-red-50 border border-red-200">
+                <p className="text-sm font-semibold text-red-700">
+                  ⚠️ Certificado digital vencido
+                </p>
+                <p className="text-[11px] text-red-700 mt-1">
+                  O certificado A1 venceu em {new Date(status.certificado.validoAte).toLocaleDateString("pt-BR")}.
+                  O gov.br vai recusar a emissão (erro 403) até que ele seja renovado e as variáveis
+                  NFSE_CERT_BASE64 / NFSE_CERT_PASSWORD sejam atualizadas.
+                </p>
+              </div>
+            )}
+            {status?.certificado && !status.certificado.vencido && status.certificado.diasRestantes <= 30 && (
+              <div className="rounded-xl px-4 py-3 bg-amber-50 border border-amber-200">
+                <p className="text-sm font-semibold text-amber-800">
+                  Certificado vence em {status.certificado.diasRestantes} dia{status.certificado.diasRestantes === 1 ? "" : "s"}
+                </p>
+                <p className="text-[11px] text-amber-800 mt-1">
+                  Válido até {new Date(status.certificado.validoAte).toLocaleDateString("pt-BR")}. Renove o A1 antes
+                  dessa data — depois de vencer, a emissão para de funcionar.
+                </p>
+              </div>
+            )}
+
             {exame && (
               <div className="bg-primary/5 rounded-xl px-4 py-3">
                 <p className="text-[10px] font-semibold text-primary uppercase tracking-wider">Vinculado ao exame</p>
